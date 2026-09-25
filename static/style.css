@@ -50,10 +50,25 @@ textarea { width: 100%; resize: vertical; line-height: 1.45; }
 #main { flex: 1; min-height: 0; }
 .tab { display: none; height: 100%; }
 .tab.active { display: flex; }
-#tab-inbox { display: none; grid-template-columns: 200px 340px 1fr 340px; }
+/* De drie verticale lijnen zijn versleepbaar: elke lijn is een eigen grid-kolom (.splitter).
+   De breedtes staan in variabelen zodat slepen (app.js) en de media-queries hetzelfde knopje
+   omdraaien. Een gesleepte breedte komt als inline style op #tab-inbox en wint dus van beide. */
+#tab-inbox {
+  display: none;
+  --kol-views: 200px; --kol-lijst: 340px; --kol-zij: 340px; --kol-lijn: 5px;
+  grid-template-columns: var(--kol-views) var(--kol-lijn) var(--kol-lijst) var(--kol-lijn) 1fr var(--kol-lijn) var(--kol-zij);
+}
 #tab-inbox.active { display: grid; }
+.splitter { background: var(--line); cursor: col-resize; position: relative; }
+.splitter::before { content: ""; position: absolute; top: 0; bottom: 0; left: -3px; right: -3px; z-index: 5; }
+.splitter:hover, .splitter.bezig { background: var(--accent); }
+body.sleept { cursor: col-resize; user-select: none; }
+/* Een grid-item krimpt standaard niet onder zijn inhoud (min-width:auto). De niet-afbrekende
+   regels in de gesprekkenlijst maakten de kolom daardoor breder dan het scherm, waardoor de
+   hele pagina horizontaal ging schuiven. min-width:0 laat de ellipsis zijn werk doen. */
+#tab-inbox > *, .conv > * { min-width: 0; }
 .page.active { display: block; overflow: auto; padding: 20px 24px; }
-.views { border-right: 1px solid var(--line); padding: 10px 8px; overflow: auto; background: #f9f9f6; }
+.views { padding: 10px 8px; overflow: auto; background: #f9f9f6; }
 .views h4 { margin: 12px 8px 4px; font-size: 11px; text-transform: uppercase; letter-spacing: .6px; color: var(--faint); }
 .view { display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; border-radius: 7px; cursor: pointer; color: var(--text); }
 .view:hover { background: #ecece8; }
@@ -62,7 +77,7 @@ textarea { width: 100%; resize: vertical; line-height: 1.45; }
 .view.active .count { background: #cfe0d3; color: var(--accent-text); }
 .view.hot .count { background: var(--danger-soft); color: var(--danger); }
 
-.list-pane { border-right: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; background: #fff; }
+.list-pane { display: flex; flex-direction: column; min-height: 0; background: #fff; }
 .list-head { display: flex; gap: 6px; padding: 10px; border-bottom: 1px solid var(--line); }
 .list-head input { flex: 1; }
 .conv-list { overflow: auto; flex: 1; }
@@ -129,7 +144,7 @@ textarea { width: 100%; resize: vertical; line-height: 1.45; }
 .draft-tools { display: flex; gap: 4px; align-items: center; }
 
 /* sidebar */
-.side-pane { border-left: 1px solid var(--line); overflow: auto; background: #fff; padding: 14px; display: flex; flex-direction: column; gap: 14px; }
+.side-pane { overflow: auto; background: #fff; padding: 14px; display: flex; flex-direction: column; gap: 14px; }
 .card { border: 1px solid var(--line); border-radius: var(--radius); padding: 12px; }
 .card h4 { margin: 0 0 8px; font-size: 11px; text-transform: uppercase; letter-spacing: .6px; color: var(--faint); display: flex; justify-content: space-between; align-items: center; }
 .kv { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; font-size: 13px; }
@@ -163,18 +178,27 @@ textarea { width: 100%; resize: vertical; line-height: 1.45; }
 .info-btn { position: absolute; right: 10px; top: 10px; width: 18px; height: 18px; border-radius: 50%; border: 1px solid var(--line-strong); background: #fff; font-size: 11px; padding: 0; color: var(--muted); }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
-@media (max-width: 1250px) { #tab-inbox.active { grid-template-columns: 170px 290px 1fr 290px; } }
-@media (max-width: 1100px) { .grid2, .grid3 { grid-template-columns: 1fr; } #tab-inbox.active { grid-template-columns: 150px 260px 1fr; } .side-pane { display: none; } }
+@media (max-width: 1250px) { #tab-inbox.active { --kol-views: 170px; --kol-lijst: 290px; --kol-zij: 290px; } }
+@media (max-width: 1100px) {
+  .grid2, .grid3 { grid-template-columns: 1fr; }
+  #tab-inbox.active { --kol-views: 150px; --kol-lijst: 260px;
+    grid-template-columns: var(--kol-views) var(--kol-lijn) var(--kol-lijst) var(--kol-lijn) 1fr; }
+  .side-pane, .splitter[data-kol="zij"] { display: none; }
+}
 /* Smal scherm (telefoon of smalle pane): lijst óf gesprek, met een terug-knop. */
 .btn-back { display: none; }
 @media (max-width: 800px) {
   #tab-inbox.active { grid-template-columns: 1fr; }
-  .views { display: none; }
+  .views, .splitter { display: none; }
   .thread-pane { display: none; }
   #tab-inbox.has-conv .list-pane { display: none; }
   #tab-inbox.has-conv .thread-pane { display: flex; }
   .btn-back { display: inline-block; }
   .tabs button { padding: 8px 8px; }
+  /* De topbalk paste niet op één regel en duwde de pagina opzij; nu breekt hij af. */
+  .topbar { flex-wrap: wrap; gap: 8px 12px; }
+  .tabs { order: 3; width: 100%; margin-left: 0; overflow-x: auto; }
+  .topbar-right { gap: 8px; }
   .list-head { flex-wrap: wrap; }
   .list-head::before { content: ""; }
 }

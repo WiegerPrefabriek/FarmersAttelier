@@ -197,34 +197,30 @@ aanvraag.
 
 ---
 
-## 8. GITHUB — de code op jouw account
+## 8. GITHUB — staat erop, maar publiek
 
-**Wat:** een lege privé-repository op GitHub.
-**Waarom:** ik kan via SSH pushen als `WiegerPrefabriek`, maar een repository aanmaken
-kan alleen via de website (er is geen `gh` op deze Mac).
-**Wat je doet:**
-1. Ga naar https://github.com/new (ingelogd als WiegerPrefabriek).
-2. Repository name: `farmers-atelier-support`. **Private**. Géén README, géén
-   .gitignore, géén licentie aanvinken (die staan al in de map).
-3. Klik **Create repository**.
-**Stuur mij daarna:** "gedaan" — dan push ik. Of doe het zelf vanuit de projectmap:
+**Gedaan op 25-09-2026:** de repo bestaat als
+**https://github.com/WiegerPrefabriek/FarmersAttelier** (niet onder de eerder
+voorgestelde naam `farmers-atelier-support`). Alles staat erop, branch `main`.
+
+**Wat nog moet:** de repo staat **publiek**. Geheimen staan er niet in — `.gitignore`
+sluit `.secrets.json`, tokens en `data/` uit, en dat is gecontroleerd — maar de code en
+de kennisbank (retourbeleid, prijzen, kortingsregels, tone of voice) zijn voor iedereen
+leesbaar. Voor een bedrijfssysteem hoort dit privé.
 
 ```bash
-git push -u origin main
+gh repo edit WiegerPrefabriek/FarmersAttelier --visibility private --accept-visibility-change-consequences
 ```
 
-(De remote `origin` staat al ingesteld op `git@github.com:WiegerPrefabriek/farmers-atelier-support.git`;
-de eerste push op 25-09-2026 mislukte omdat de repository nog niet bestond. Alles staat
-lokaal gecommit op branch `main`.)
-
-Op de andere laptop daarna:
+Op de andere laptop (alleen meekijken en controleren):
 ```bash
-git clone git@github.com:WiegerPrefabriek/farmers-atelier-support.git
-cd farmers-atelier-support
+git clone https://github.com/WiegerPrefabriek/FarmersAttelier.git
+cd FarmersAttelier
 python3 -m venv .venv && ./.venv/bin/pip install -r requirements.txt
 ./.venv/bin/python mock/generate.py
 ./.venv/bin/python run.py
 ```
+Daarna volstaat `git pull` om de laatste stand op te halen.
 
 ---
 
@@ -248,5 +244,5 @@ werkt nu op 3.9 met een iets oudere SDK, maar op termijn lopen we vast.
 - [ ] 5. Kennisbank-bestanden in `kb/` ingevuld
 - [ ] 6. Fulfillmentpartij + API
 - [ ] 7. TikTok Business Account + Accounts API-aanvraag (optioneel)
-- [ ] 8. GitHub-repo `farmers-atelier-support` aangemaakt
+- [x] 8. GitHub-repo aangemaakt (FarmersAttelier) — nog op privé zetten
 - [ ] 9. Python 3.12 geïnstalleerd (optioneel)

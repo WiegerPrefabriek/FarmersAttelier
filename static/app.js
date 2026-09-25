@@ -597,6 +597,85 @@ async function renderInstellingen() {
 }
 
 // ---------------------------------------------------------------------------
+// Versleepbare kolommen
+// ---------------------------------------------------------------------------
+// Elke verticale lijn in de inbox is een .splitter-kolom in het grid. Slepen zet de breedte
+// als inline variabele op #tab-inbox, wat sterker is dan de media-query. Dubbelklikken haalt
+// de inline waarde weg, zodat de standaard uit style.css weer geldt.
+const KOLOMMEN = {
+  views: { var: "--kol-views", min: 140, standaard: 200 },
+  lijst: { var: "--kol-lijst", min: 250, standaard: 340 },
+  zij:   { var: "--kol-zij",   min: 250, standaard: 340, omgekeerd: true },
+};
+const MIN_GESPREK = 320;   // het gesprek in het midden moet leesbaar blijven
+
+function kolomBreedtes() {
+  const s = getComputedStyle($("#tab-inbox"));
+  const lees = (naam) => parseFloat(s.getPropertyValue(naam)) || 0;
+  return { views: lees("--kol-views"), lijst: lees("--kol-lijst"), zij: lees("--kol-zij"), lijn: lees("--kol-lijn") };
+}
+
+function zetKolom(kol, px) {
+  const def = KOLOMMEN[kol], vak = $("#tab-inbox"), b = kolomBreedtes();
+  // Hoeveel ruimte is er over als deze kolom groeit? Het gesprek mag niet onder MIN_GESPREK.
+  const anderen = Object.keys(KOLOMMEN).filter((k) => k !== kol && $(`.splitter[data-kol="${k}"]`)?.offsetParent)
+    .reduce((t, k) => t + b[k], 0);
+  const max = vak.clientWidth - anderen - 3 * b.lijn - MIN_GESPREK;
+  const breedte = Math.round(Math.max(def.min, Math.min(px, Math.max(def.min, max))));
+  vak.style.setProperty(def.var, breedte + "px");
+  return breedte;
+}
+
+function bewaarKolommen() {
+  const vak = $("#tab-inbox"), uit = {};
+  for (const [kol, def] of Object.entries(KOLOMMEN)) {
+    const v = vak.style.getPropertyValue(def.var);
+    if (v) uit[kol] = parseFloat(v);
+  }
+  localStorage.setItem("fa_kolommen", JSON.stringify(uit));
+}
+
+function initSplitters() {
+  try {
+    const bewaard = JSON.parse(localStorage.getItem("fa_kolommen") || "{}");
+    for (const [kol, px] of Object.entries(bewaard)) if (KOLOMMEN[kol] && px > 0) zetKolom(kol, px);
+  } catch (e) { /* onleesbaar opgeslagen waarde: standaardbreedtes */ }
+
+  $$(".splitter").forEach((sp) => {
+    const kol = sp.dataset.kol, def = KOLOMMEN[kol];
+    if (!def) return;
+
+    sp.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      const startX = e.clientX, startBreedte = kolomBreedtes()[kol];
+      sp.setPointerCapture(e.pointerId);
+      sp.classList.add("bezig"); document.body.classList.add("sleept");
+
+      const beweeg = (ev) => {
+        const delta = ev.clientX - startX;
+        zetKolom(kol, startBreedte + (def.omgekeerd ? -delta : delta));
+      };
+      const stop = () => {
+        sp.removeEventListener("pointermove", beweeg);
+        sp.removeEventListener("pointerup", stop);
+        sp.removeEventListener("pointercancel", stop);
+        sp.classList.remove("bezig"); document.body.classList.remove("sleept");
+        bewaarKolommen();
+      };
+      sp.addEventListener("pointermove", beweeg);
+      sp.addEventListener("pointerup", stop);
+      sp.addEventListener("pointercancel", stop);
+    });
+
+    sp.addEventListener("dblclick", () => {
+      $("#tab-inbox").style.removeProperty(def.var);
+      bewaarKolommen();
+      toast("Standaardbreedte hersteld");
+    });
+  });
+}
+
+// ---------------------------------------------------------------------------
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") closeModal();
   if (e.target.matches("input, textarea, select")) return;
@@ -608,4 +687,5 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "c" && state.currentId) $("#btn-close")?.click();
 });
 
+initSplitters();
 boot().catch((e) => { toast("Opstarten mislukt: " + e.message, true); console.error(e); });
