@@ -72,9 +72,11 @@ def conversations(params, body, user_id):
     else:
         where.append(VIEW_SQL.get(view, VIEW_SQL["alle"]))
     if q:
-        where.append("(c.id IN (SELECT conversation_id FROM messages WHERE id IN (SELECT rowid FROM messages_fts WHERE messages_fts MATCH :fts)) "
-                     "OR lower(k.name) LIKE :like OR lower(k.email) LIKE :like OR c.order_name LIKE :like OR lower(c.subject) LIKE :like)")
-        args["fts"] = " OR ".join(f'"{w}"' for w in re.findall(r"[\wÀ-ÿ]{2,}", q))
+        woorden = re.findall(r"[\wÀ-ÿ]{2,}", q)
+        fts = "c.id IN (SELECT conversation_id FROM messages WHERE id IN (SELECT rowid FROM messages_fts WHERE messages_fts MATCH :fts)) OR " if woorden else ""
+        where.append(f"({fts}lower(k.name) LIKE :like OR lower(k.email) LIKE :like OR c.order_name LIKE :like OR lower(c.subject) LIKE :like)")
+        if woorden:
+            args["fts"] = " OR ".join(f'"{w}"' for w in woorden)
         args["like"] = f"%{q.lower()}%"
     sql = f"""SELECT c.id, c.channel, c.via, c.subject, c.status, c.priority, c.intent, c.sentiment, c.ai_status, c.needs_human,
                      c.needs_human_reason, c.assignee_id, c.order_name, c.tags, c.summary, c.last_message_at, c.last_customer_message_at,
@@ -147,7 +149,10 @@ def note(params, body, user_id):
 
 
 def assign(params, body, user_id):
-    service.assign(_int(params["id"]), body.get("assignee_id"), user_id)
+    wie = body.get("assignee_id")
+    if wie is not None and not db.one("SELECT 1 FROM users WHERE id = ?", (wie,)):
+        raise ApiError(400, "onbekende medewerker")
+    service.assign(_int(params["id"]), wie, user_id)
     return {"ok": True}
 
 
@@ -221,6 +226,8 @@ def private_reply(params, body, user_id):
     from app.channels import dispatch
     cid = _int(params["id"])
     conv = db.one("SELECT * FROM conversations WHERE id = ?", (cid,))
+    if not conv:
+        raise ApiError(404, "gesprek niet gevonden")
     r = dispatch.private_reply(conv, body.get("body", ""))
     service.add_note(cid, "Privé antwoord (DM) verstuurd op deze comment:\n" + body.get("body", ""), user_id)
     return {"ok": True, **r}

@@ -83,7 +83,7 @@ def handle(topic: str, payload: dict) -> list[dict]:
         if topic == "orders/cancelled":
             fulfillment.record_event(o["name"], "problem", db.now(), detail="Order geannuleerd", raw={"topic": topic})
     elif topic in ("fulfillments/create", "fulfillments/update"):
-        naam = payload.get("name") or (f"#{payload.get('order_id')}" if payload.get("order_id") else None)
+        naam = (payload.get("name") or "").split(".")[0] or (f"#{payload.get('order_id')}" if payload.get("order_id") else None)  # "#1001.1" → "#1001"
         order = db.one("SELECT name FROM orders WHERE shopify_id = ?", (f"gid://shopify/Order/{payload.get('order_id')}",))
         naam = order["name"] if order else naam
         if naam:

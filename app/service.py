@@ -138,8 +138,10 @@ def set_intent(conv_id: int, intent: str, user_id: int | None) -> None:
 
 
 def escalate(conv_id: int, reason: str, user_id: int | None, assignee_id: int | None = None) -> None:
-    _conv(conv_id)
-    wijzig = {"needs_human": 1, "needs_human_reason": reason or "Geëscaleerd door medewerker", "priority": "high", "ai_status": "handover"}
+    from app import rules
+    conv = _conv(conv_id)
+    wijzig = {"needs_human": 1, "needs_human_reason": reason or "Geëscaleerd door medewerker",
+              "priority": rules.max_priority(conv.get("priority"), "high"), "ai_status": "handover"}
     if assignee_id:
         wijzig["assignee_id"] = assignee_id
     db.update("conversations", conv_id, wijzig)
@@ -206,11 +208,16 @@ def decide_action(action_id: int, approve: bool, user_id: int | None) -> dict:
     if not a or a["status"] != "pending":
         raise ValueError("actie bestaat niet of is al beslist")
     params = db.loads(a["params"], {})
+    # Atomair claimen: twee gelijktijdige klikken mogen nooit twee refunds/annuleringen geven.
+    nieuw = "approved" if approve else "rejected"
+    with db.tx() as c:
+        cur = c.execute("UPDATE pending_actions SET status = ?, decided_by = ?, decided_at = ? WHERE id = ? AND status = 'pending'",
+                        (nieuw, user_id, db.now(), action_id))
+        if cur.rowcount == 0:
+            raise ValueError("actie is intussen al door iemand anders beslist")
     if not approve:
-        db.update("pending_actions", action_id, {"status": "rejected", "decided_by": user_id, "decided_at": db.now()})
         events.emit("action-rejected", conversation_id=a["conversation_id"], actor_type="agent", actor_id=user_id, data={"action_id": action_id})
         return {"status": "rejected"}
-    db.update("pending_actions", action_id, {"status": "approved", "decided_by": user_id, "decided_at": db.now()})
     events.emit("action-approved", conversation_id=a["conversation_id"], actor_type="agent", actor_id=user_id, data={"action_id": action_id})
     try:
         resultaat = _execute_action(a["type"], params, a["conversation_id"])
@@ -249,7 +256,13 @@ def _execute_action(type_: str, params: dict, conv_id: int) -> dict:
         if type_ == "tag_order":
             return c.add_tags(order["shopify_id"], params.get("tags", []))
         if type_ == "refund":
-            return c.refund_order(order["shopify_id"], str(params["amount"]), params["transaction_parent_id"], params.get("gateway", "shopify_payments"),
+            # De ouder-transactie (de betaling) komt uit de order zelf; de UI hoeft die niet te kennen.
+            transacties = [t for t in (order.get("raw") or {}).get("transactions") or [] if t.get("kind") in ("SALE", "CAPTURE") and t.get("status") == "SUCCESS"]
+            parent = params.get("transaction_parent_id") or (transacties[-1]["id"] if transacties else None)
+            gateway = params.get("gateway") or (transacties[-1]["gateway"] if transacties else "shopify_payments")
+            if not parent:
+                raise ValueError("geen geslaagde betaaltransactie gevonden op de order; refund handmatig in Shopify")
+            return c.refund_order(order["shopify_id"], f"{float(params['amount']):.2f}", parent, gateway,
                                   params.get("line_items", []), params.get("note", ""), f"conv-{conv_id}-{params.get('key', 1)}")
     if type_ == "hide_comment":
         return dispatch.hide_comment(conv, params)

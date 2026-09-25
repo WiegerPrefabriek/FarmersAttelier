@@ -37,7 +37,14 @@ INFO = {
 
 
 def _vandaag() -> str:
-    return dt.datetime.utcnow().strftime("%Y-%m-%dT00:00:00")
+    """Middernacht lokale tijd (Amsterdam), uitgedrukt in UTC zoals de database opslaat."""
+    lokaal = dt.datetime.now().astimezone().replace(hour=0, minute=0, second=0, microsecond=0)
+    return lokaal.astimezone(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
+
+
+def _lokale_dag(iso: str | None) -> str | None:
+    t = db.parse_ts(iso)
+    return t.replace(tzinfo=dt.timezone.utc).astimezone().strftime("%Y-%m-%d") if t else None
 
 
 def _dagen_terug(n: int) -> str:
@@ -93,12 +100,19 @@ def dashboard() -> dict:
 
 
 def per_dag(n: int) -> list[dict]:
-    start = (dt.datetime.utcnow() - dt.timedelta(days=n - 1)).strftime("%Y-%m-%d")
-    nieuw = {r["d"]: r["n"] for r in db.rows("SELECT substr(created_at,1,10) d, COUNT(*) n FROM conversations WHERE created_at >= ? GROUP BY d", (start,))}
-    gesloten = {r["d"]: r["n"] for r in db.rows("SELECT substr(closed_at,1,10) d, COUNT(*) n FROM conversations WHERE closed_at >= ? GROUP BY d", (start,))}
+    start = (dt.datetime.utcnow() - dt.timedelta(days=n)).strftime("%Y-%m-%d")
+    nieuw: dict[str, int] = {}
+    gesloten: dict[str, int] = {}
+    for r in db.rows("SELECT created_at, closed_at FROM conversations WHERE created_at >= ? OR closed_at >= ?", (start, start)):
+        d1, d2 = _lokale_dag(r["created_at"]), _lokale_dag(r["closed_at"])
+        if d1:
+            nieuw[d1] = nieuw.get(d1, 0) + 1
+        if d2:
+            gesloten[d2] = gesloten.get(d2, 0) + 1
     uit = []
+    vandaag = dt.datetime.now().astimezone()
     for i in range(n):
-        d = (dt.datetime.utcnow() - dt.timedelta(days=n - 1 - i)).strftime("%Y-%m-%d")
+        d = (vandaag - dt.timedelta(days=n - 1 - i)).strftime("%Y-%m-%d")
         uit.append({"dag": d, "nieuw": nieuw.get(d, 0), "gesloten": gesloten.get(d, 0)})
     return uit
 

@@ -70,15 +70,20 @@ def fetch_new() -> list[dict]:
     if not configured():
         return []
     start = db.setting("gmail_history_id")
-    ids = []
+    ids, nieuw_history = [], None
     if start:
         try:
-            data = _get("history", startHistoryId=start, historyTypes="messageAdded", labelId="INBOX")
-            for h in data.get("history", []):
-                for m in h.get("messagesAdded", []):
-                    ids.append(m["message"]["id"])
-            if data.get("historyId"):
-                db.set_setting("gmail_history_id", data["historyId"])
+            token = None
+            while True:  # history.list is gepagineerd; alles ophalen vóór we de historyId opschuiven
+                data = _get("history", startHistoryId=start, historyTypes="messageAdded", labelId="INBOX",
+                            **({"pageToken": token} if token else {}))
+                for h in data.get("history", []):
+                    for m in h.get("messagesAdded", []):
+                        ids.append(m["message"]["id"])
+                nieuw_history = data.get("historyId") or nieuw_history
+                token = data.get("nextPageToken")
+                if not token:
+                    break
         except RuntimeError as fout:
             if "404" in str(fout):  # historyId te oud → opnieuw beginnen
                 start = None
@@ -87,10 +92,9 @@ def fetch_new() -> list[dict]:
     if not start:
         data = _get("messages", q="in:inbox newer_than:7d", maxResults=50)
         ids = [m["id"] for m in data.get("messages", [])]
-        profiel = _get("profile")
-        db.set_setting("gmail_history_id", profiel.get("historyId"))
+        nieuw_history = _get("profile").get("historyId")
     uit = []
-    for mid in ids:
+    for mid in dict.fromkeys(ids):
         if db.one("SELECT 1 FROM inbound_queue WHERE source = 'gmail' AND external_id = ?", (mid,)):
             continue
         raw = _get(f"messages/{mid}", format="raw")
@@ -100,6 +104,9 @@ def fetch_new() -> list[dict]:
                                     "processed_at": db.now()})
         if inbound:
             uit.append(inbound)
+    # Pas ná het ophalen opschuiven: faalt een fetch halverwege, dan komen de rest de volgende ronde alsnog.
+    if nieuw_history:
+        db.set_setting("gmail_history_id", nieuw_history)
     return uit
 
 

@@ -146,6 +146,53 @@ class TestPipeline(Basis):
         self.assertEqual(pipeline.effective_level("shipping.status", None), "draft")
 
 
+class TestReviewFixes(Basis):
+    def test_zoeken_op_een_teken_crasht_niet(self):
+        from app import api
+        for q in ("#", "a", "1", "#18"):
+            uit = api.conversations({"view": "alle", "q": q}, {}, 1)
+            self.assertIn("items", uit)
+
+    def test_dm_van_lang_geleden_heropent_oud_ticket_niet(self):
+        def dm(mid):
+            return pipeline.ingest({"channel": "instagram", "via": "dm", "external_message_id": mid, "external_thread_id": "psid-42",
+                                    "sender": {"channel": "instagram", "external_id": "psid-42", "handle": "oud", "name": "oud"},
+                                    "text": "Hoi, is maat M er nog?", "attachments": [], "external_ref": {}}, process=False)
+        r1 = dm("dm-old-1")
+        db.update("conversations", r1["conversation_id"], {"status": "closed", "closed_at": "2025-01-01T00:00:00Z"})
+        r2 = dm("dm-old-2")
+        self.assertNotEqual(r1["conversation_id"], r2["conversation_id"])
+        r3 = dm("dm-old-3")
+        self.assertEqual(r2["conversation_id"], r3["conversation_id"])
+
+    def test_email_antwoord_via_in_reply_to_komt_in_zelfde_gesprek(self):
+        r1 = self._mail("Vraag over #1843", thread="thr-A", mid="<a1@klant>")
+        d = db.one("SELECT id, body FROM ai_drafts WHERE conversation_id = ? AND status = 'pending'", (r1["conversation_id"],))
+        service.send_reply(r1["conversation_id"], d["body"], user_id=1, draft_id=d["id"])
+        ons_id = db.one("SELECT external_id FROM messages WHERE conversation_id = ? AND direction = 'out' ORDER BY id DESC LIMIT 1", (r1["conversation_id"],))["external_id"]
+        r2 = pipeline.ingest({"channel": "email", "via": "email", "external_message_id": "<a2@klant>", "external_thread_id": "<a2@klant>",
+                              "sender": {"channel": "email", "external_id": "sophie@test.nl", "name": "Sophie", "email": "sophie@test.nl"},
+                              "subject": "Re: Vraag", "text": "Dank!", "attachments": [], "external_ref": {"in_reply_to": ons_id, "references": ""}}, process=False)
+        self.assertEqual(r1["conversation_id"], r2["conversation_id"])
+
+    def test_contains_any_met_losse_string_en_none(self):
+        self.assertTrue(rules._cmp("contains_any", ["abusive"], "abusive"))
+        self.assertFalse(rules._cmp("contains_any", ["abusive"], None))
+        self.assertFalse(rules._cmp("in", "refund.request", "refund"))
+
+    def test_dubbel_goedkeuren_voert_een_keer_uit(self):
+        r = self._mail("Annuleer #1843 aub", thread="thr-B")
+        aid = service.propose_action(r["conversation_id"], "tag_order", {"order_name": "#1843", "tags": ["test"]}, "Taggen?")
+        self.assertEqual(service.decide_action(aid, True, 1)["status"], "executed")
+        with self.assertRaises(ValueError):
+            service.decide_action(aid, True, 2)
+
+    def test_html_mail_escapet(self):
+        m = email_common.build_reply("support@fa.nl", "k@k.nl", "Re", "maat <M> & meer")
+        html = m.get_body(preferencelist=("html",)).get_content()
+        self.assertIn("maat &lt;M&gt; &amp; meer", html)
+
+
 class TestParsers(unittest.TestCase):
     def test_email_quotes_gestript_en_autoreply_genegeerd(self):
         raw = (b"From: Sophie <sophie@test.nl>\r\nTo: support@farmersatelier.nl\r\nSubject: Re: Bestelling\r\nMessage-ID: <abc@test>\r\n"

@@ -75,17 +75,29 @@ def find_or_create_customer(sender: dict, channel: str) -> int:
     return cid
 
 
-def find_conversation(customer_id: int, channel: str, via: str, thread_id: str | None) -> dict | None:
-    if thread_id:
-        c = db.one("SELECT * FROM conversations WHERE channel = ? AND external_thread_id = ? ORDER BY id DESC LIMIT 1", (channel, thread_id))
-        if c:
-            return c
-        if via in ("comment", "email"):
-            return None  # nieuwe e-mailthread of nieuwe top-level comment = eigen ticket (Gorgias-model)
-    if via == "comment":
-        return None
+def find_conversation(customer_id: int, channel: str, via: str, thread_id: str | None,
+                      reply_ids: list | None = None) -> dict | None:
     dagen = config.THREAD_WINDOW_DAYS.get(channel, 3)
     grens = (dt.datetime.utcnow() - dt.timedelta(days=dagen)).strftime("%Y-%m-%dT%H:%M:%S")
+    if thread_id:
+        if via == "dm":
+            # Thread = de persoon; een DM van maanden later hoort niet bij het oude ticket.
+            c = db.one("SELECT * FROM conversations WHERE channel = ? AND external_thread_id = ? "
+                       "AND (status IN ('open','snoozed') OR (status = 'closed' AND closed_at > ?)) ORDER BY id DESC LIMIT 1",
+                       (channel, thread_id, grens))
+        else:
+            c = db.one("SELECT * FROM conversations WHERE channel = ? AND external_thread_id = ? ORDER BY id DESC LIMIT 1", (channel, thread_id))
+        if c:
+            return c
+    # E-mail: In-Reply-To/References wijzen naar een bericht (van ons of van de klant) dat we al hebben.
+    for ref in reply_ids or []:
+        m = db.one("SELECT conversation_id FROM messages WHERE external_id = ?", (ref,))
+        if m:
+            return db.one("SELECT * FROM conversations WHERE id = ?", (m["conversation_id"],))
+    if thread_id and via in ("comment", "email"):
+        return None  # nieuwe e-mailthread of nieuwe top-level comment = eigen ticket (Gorgias-model)
+    if via == "comment":
+        return None
     return db.one("SELECT * FROM conversations WHERE customer_id = ? AND channel = ? AND via = ? "
                   "AND (status IN ('open','snoozed') OR (status = 'closed' AND closed_at > ?)) "
                   "ORDER BY updated_at DESC LIMIT 1", (customer_id, channel, via, grens))
@@ -101,7 +113,9 @@ def ingest(inbound: dict, process: bool = True) -> dict:
     sender = inbound.get("sender") or {}
     is_echo = bool(inbound.get("is_echo"))
     cid = find_or_create_customer(sender if not is_echo else inbound.get("recipient", sender), channel)
-    conv = find_conversation(cid, channel, via, inbound.get("external_thread_id"))
+    ref = inbound.get("external_ref") or {}
+    reply_ids = [x for x in ([ref.get("in_reply_to")] + (ref.get("references") or "").split()) if x]
+    conv = find_conversation(cid, channel, via, inbound.get("external_thread_id"), reply_ids)
     nu = db.now()
     sent_at = inbound.get("sent_at") or nu
     nieuw = False

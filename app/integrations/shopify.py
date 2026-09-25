@@ -51,6 +51,7 @@ ORDER_FIELDS = """
     events(first: 20) { nodes { status happenedAt } }
   }
   refunds { id createdAt note totalRefundedSet { shopMoney { amount } } }
+  transactions(first: 10) { id kind status gateway amountSet { shopMoney { amount } } }
   returns(first: 10) { nodes { id name status
     returnLineItems(first: 20) { nodes { ... on ReturnLineItem { quantity returnReason returnReasonNote } } } } }
   events(first: 30) { nodes { id createdAt message } }
@@ -244,7 +245,10 @@ def normalize_order(node: dict) -> dict:
                                for x in (r.get("returnLineItems") or {}).get("nodes", [])]}
                     for r in (node.get("returns") or {}).get("nodes", [])],
         "cancelled_at": node.get("cancelledAt"), "note": node.get("note"), "tags": node.get("tags") or [],
-        "raw": {"events": [(e.get("createdAt"), e.get("message")) for e in (node.get("events") or {}).get("nodes", [])]},
+        "raw": {"events": [(e.get("createdAt"), e.get("message")) for e in (node.get("events") or {}).get("nodes", [])],
+                "transactions": [{"id": t.get("id"), "kind": t.get("kind"), "status": t.get("status"), "gateway": t.get("gateway"),
+                                  "amount": float(((t.get("amountSet") or {}).get("shopMoney") or {}).get("amount") or 0)}
+                                 for t in node.get("transactions") or []]},
         "synced_at": db.now(),
     }
 
@@ -319,6 +323,7 @@ def orders_for_email(email: str | None, refresh: bool = True) -> list[dict]:
 def get_order(name: str | None, refresh: bool = True) -> dict | None:
     if not name:
         return None
+    name = str(name).strip()
     name = name if name.startswith("#") else f"#{name}"
     cached = db.one("SELECT * FROM orders WHERE name = ?", (name,))
     if refresh and client().configured and (not cached or _stale(cached.get("synced_at"))):

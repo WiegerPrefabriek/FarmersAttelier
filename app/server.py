@@ -131,12 +131,23 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return self._static(pad)
         self._send(404, b"Not found", "text/plain")
 
+    def _csrf_ok(self) -> bool:
+        """Schrijfverzoeken alleen vanaf onze eigen pagina: JSON-Content-Type (dwingt een
+        CORS-preflight af die we niet beantwoorden) én geen cross-site Sec-Fetch-Site."""
+        ct = (self.headers.get("Content-Type") or "").split(";")[0].strip().lower()
+        if ct != "application/json":
+            return False
+        sfs = (self.headers.get("Sec-Fetch-Site") or "").lower()
+        return sfs in ("", "same-origin", "none")
+
     def _api(self, method: str, pad: str, params: dict):
         for m, rx, fn in _COMPILED:
             mt = rx.match(pad)
             if m == method and mt:
                 body = {}
                 if method in ("POST", "DELETE"):
+                    if not self._csrf_ok():
+                        return self._json(403, {"error": "verzoek moet application/json zijn en van deze pagina komen"})
                     raw = self._raw_body()
                     if raw:
                         try:
@@ -192,6 +203,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
     # --- webhooks ----------------------------------------------------------------
     def _webhook(self, method: str, pad: str, params: dict):
+        # Zonder geheim (nog niet gekoppeld) accepteren we webhooks alleen lokaal — nooit via een tunnel.
+        geheim = {"/webhooks/meta": config.secret("meta", "app_secret"),
+                  "/webhooks/shopify": config.secret("shopify", "webhook_secret") or config.secret("shopify", "client_secret"),
+                  "/webhooks/fulfillment": config.secret("fulfillment", "webhook_token")}.get(pad)
+        if not geheim and not self._host_ok() and method == "POST":
+            return self._send(403, b"webhook-geheim ontbreekt; alleen lokaal testen toegestaan", "text/plain")
         if pad == "/webhooks/meta":
             if method == "GET":
                 challenge = meta.verify_challenge(params)

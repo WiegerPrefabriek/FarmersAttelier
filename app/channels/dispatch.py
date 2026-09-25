@@ -23,7 +23,7 @@ def send(conv: dict, body: str, msg_id: int) -> dict:
             raise ValueError("Klant heeft geen e-mailadres; antwoord kan niet per mail")
         laatste_in = db.one("SELECT external_id, source FROM messages WHERE conversation_id = ? AND direction = 'in' "
                             "ORDER BY id DESC LIMIT 1", (conv["id"],)) or {}
-        bron = db.loads(laatste_in.get("source"), {})
+        bron = (db.loads(laatste_in.get("source"), {}) or {}).get("external_ref") or {}
         onderwerp = conv.get("subject") or "Je bericht aan Farmers Atelier"
         if not onderwerp.lower().startswith("re:"):
             onderwerp = "Re: " + onderwerp

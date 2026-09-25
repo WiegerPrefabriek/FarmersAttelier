@@ -185,10 +185,17 @@ async function openConversation(id, silent) {
   $$("#conv-list .conv").forEach((x) => x.classList.toggle("active", Number(x.dataset.id) === id));
   try {
     const d = await api(`/api/conversations/${id}`);
-    const composerText = $("#composer-text");
-    const typed = composerText && !silent ? null : composerText?.value;
+    // Bij een live-update (silent) mag een half getypt antwoord nooit verloren gaan.
+    const oud = $("#composer-text");
+    const typed = silent && oud && id === state.current?.conversation?.id ? oud.value : null;
+    const wasFocused = silent && document.activeElement === oud;
+    const cursor = wasFocused ? oud.selectionStart : null;
     state.current = d; renderThread(d); renderSide(d);
-    if (silent && typed && $("#composer-text") && $("#composer-text").value !== typed && document.activeElement?.id === "composer-text") $("#composer-text").value = typed;
+    const nieuw = $("#composer-text");
+    if (typed !== null && nieuw && typed.trim() && typed !== nieuw.value && !state.noteMode) {
+      nieuw.value = typed;
+      if (wasFocused) { nieuw.focus(); try { nieuw.setSelectionRange(cursor, cursor); } catch (e) { /* ok */ } }
+    } else if (wasFocused && nieuw) nieuw.focus();
   } catch (e) { toast("Gesprek laden mislukt: " + e.message, true); }
 }
 
@@ -496,7 +503,8 @@ async function renderRegels() {
   const el = $("#tab-regels"); el.innerHTML = `<div class="empty">Laden…</div>`;
   const d = await api("/api/rules");
   const opt = (arr, v, labels) => arr.map((x) => `<option value="${esc(x)}" ${x === v ? "selected" : ""}>${esc(labels?.[x] || x)}</option>`).join("");
-  const valStr = (v) => Array.isArray(v) ? v.join(", ") : (v === true ? "ja" : v === false ? "nee" : (v ?? ""));
+  // Een lijst met één element krijgt een slotkomma, zodat hij bij opslaan weer een lijst wordt.
+  const valStr = (v) => Array.isArray(v) ? (v.length === 1 ? v[0] + "," : v.join(", ")) : (v === true ? "ja" : v === false ? "nee" : (v ?? ""));
   const ruleHtml = (r) => `<div class="rule" data-id="${r.id || ""}"><div class="rule-head"><button class="switch ${r.enabled ? "on" : ""}" data-toggle title="Aan/uit"></button><b>${esc(r.name)}</b><span class="faint">${r.hits || 0}× gevuurd · volgorde ${r.priority}</span><button class="ghost small" data-open>bewerken</button></div>
     <div class="rule-body">
       <div class="form-row"><label>Naam</label><input type="text" data-f="name" value="${esc(r.name)}"></div>
@@ -519,9 +527,9 @@ async function renderRegels() {
     $("[data-add-cond]", rule).onclick = () => { $("[data-conds]", rule).insertAdjacentHTML("beforeend", condRow({ field: "intent", op: "is", value: "" })); bindRm(rule); };
     $("[data-add-act]", rule).onclick = () => { $("[data-acts]", rule).insertAdjacentHTML("beforeend", actRow({ type: "add_tag", value: "" })); bindRm(rule); };
     $("[data-save]", rule).onclick = async () => {
-      const parse = (s) => { const t = s.trim(); if (t === "ja" || t === "true") return true; if (t === "nee" || t === "false") return false; if (/^-?\d+(\.\d+)?$/.test(t)) return Number(t); if (t.includes(",")) return t.split(",").map((x) => x.trim()).filter(Boolean); return t; };
+      const parse = (s, op) => { const t = s.trim(); if (t === "ja" || t === "true") return true; if (t === "nee" || t === "false") return false; if (/^-?\d+(\.\d+)?$/.test(t)) return Number(t); if (t.includes(",") || ["in", "not_in", "contains_any"].includes(op)) return t.split(",").map((x) => x.trim()).filter(Boolean); return t; };
       const body = { name: $("[data-f=name]", rule).value, description: $("[data-f=description]", rule).value, priority: Number($("[data-f=priority]", rule).value),
-        conditions: $$("[data-conds] .rule-row", rule).map((row) => ({ field: $("[data-c=field]", row).value, op: $("[data-c=op]", row).value, value: parse($("[data-c=value]", row).value) })),
+        conditions: $$("[data-conds] .rule-row", rule).map((row) => ({ field: $("[data-c=field]", row).value, op: $("[data-c=op]", row).value, value: parse($("[data-c=value]", row).value, $("[data-c=op]", row).value) })),
         actions: $$("[data-acts] .rule-row", rule).map((row) => ({ type: $("[data-a=type]", row).value, value: parse($("[data-a=value]", row).value) })) };
       await api(id ? `/api/rules/${id}` : "/api/rules", body); toast("Regel opgeslagen"); renderRegels();
     };

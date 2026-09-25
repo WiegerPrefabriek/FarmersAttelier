@@ -89,6 +89,9 @@ def max_priority(*waarden) -> str | None:
 
 
 def _cmp(op: str, links, rechts) -> bool:
+    if op in ("in", "not_in", "contains_any"):
+        # Eén waarde uit de editor komt als string binnen; altijd als lijst behandelen.
+        rechts = [rechts] if isinstance(rechts, (str, int, float, bool)) else list(rechts or [])
     if op == "is":
         return links == rechts
     if op == "is_not":

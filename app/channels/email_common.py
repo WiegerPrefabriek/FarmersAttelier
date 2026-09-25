@@ -4,8 +4,10 @@ auto-replies en bounces herkennen, en een antwoordmail opbouwen met threading-he
 
 from __future__ import annotations
 
+import datetime
 import email
 import email.utils
+import html as _html
 import re
 from email.header import decode_header, make_header
 from email.message import EmailMessage
@@ -113,7 +115,7 @@ def parse_rfc822(raw: bytes, thread_id: str | None = None, ons_adres: str | None
     datum = None
     try:
         d = email.utils.parsedate_to_datetime(msg.get("date"))
-        datum = d.astimezone().strftime("%Y-%m-%dT%H:%M:%SZ") if d else None
+        datum = d.astimezone(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ") if d else None
     except Exception:  # noqa: BLE001
         datum = None
     refs = (msg.get("references") or "").split()
@@ -141,6 +143,6 @@ def build_reply(van: str, naar: str, onderwerp: str, body: str, in_reply_to: str
     m["Message-ID"] = email.utils.make_msgid(domain=van.split("@")[-1] if "@" in van else None)
     m.set_content(body)
     html = "<div style=\"font-family:-apple-system,Helvetica,Arial,sans-serif;font-size:15px;line-height:1.5\">" + \
-        "<br>".join(body.split("\n")).replace("&", "&amp;").replace("<br>", "<br>") + "</div>"
+        "<br>".join(_html.escape(regel) for regel in body.split("\n")) + "</div>"
     m.add_alternative(html, subtype="html")
     return m

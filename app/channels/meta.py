@@ -129,6 +129,11 @@ def parse_webhook(payload: dict) -> list[dict]:
             veld, v = ch.get("field"), ch.get("value") or {}
             if kanaal == "instagram" and veld in ("comments", "mentions"):
                 van = v.get("from") or {}
+                if not van.get("id"):
+                    # Mentions komen zonder afzender/tekst binnen (alleen media_id/comment_id); die halen we
+                    # later op via de API. Nu overslaan in plaats van een spookklant "None" te maken.
+                    print(f"   ! Meta {veld} zonder afzender overgeslagen: {v}", flush=True)
+                    continue
                 if str(van.get("id")) in eigen_ids:
                     continue
                 cid = v.get("id") or v.get("comment_id")
@@ -145,7 +150,7 @@ def parse_webhook(payload: dict) -> list[dict]:
                 })
             elif kanaal == "facebook" and veld == "feed" and v.get("item") == "comment" and v.get("verb") == "add":
                 van = v.get("from") or {}
-                if str(van.get("id")) in eigen_ids:
+                if not van.get("id") or str(van.get("id")) in eigen_ids:
                     continue
                 cid = v.get("comment_id")
                 ouder = v.get("parent_id")
