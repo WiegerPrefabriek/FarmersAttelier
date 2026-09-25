@@ -1,0 +1,27 @@
+# Geheimen en tokens — nooit committen
+.secrets.json
+gmail_client.json
+gmail_token*.json
+*client_secret*.json
+*_token.json
+service_account.json
+*.pem
+*.key
+
+# Lokale data en logs
+data/
+*.db
+*.db-wal
+*.db-shm
+logs/
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# macOS / editors
+.DS_Store
+.claude/
+.vscode/
+.idea/

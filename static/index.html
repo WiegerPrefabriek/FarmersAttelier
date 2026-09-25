@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Farmers Atelier · Customer Service</title>
+<link rel="stylesheet" href="/style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%232f5d3a'/><text x='16' y='22' font-size='16' font-family='sans-serif' font-weight='700' fill='white' text-anchor='middle'>FA</text></svg>">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand"><span class="brand-mark">FA</span><div><div class="brand-name">Farmers Atelier</div><div class="brand-sub">Customer Service</div></div></div>
+  <nav class="tabs" id="tabs">
+    <button data-tab="inbox" class="active">Inbox</button>
+    <button data-tab="dashboard">Dashboard</button>
+    <button data-tab="leren">Leren</button>
+    <button data-tab="regels">Regels</button>
+    <button data-tab="kennis">Kennisbank</button>
+    <button data-tab="instellingen">Instellingen</button>
+  </nav>
+  <div class="topbar-right">
+    <span id="ai-badge" class="badge" title="Welke AI draait er">AI: …</span>
+    <span id="live-dot" class="live-dot" title="Live-verbinding"></span>
+    <select id="user-select" title="Wie ben jij"></select>
+  </div>
+</header>
+
+<main id="main">
+  <section id="tab-inbox" class="tab active">
+    <aside class="views" id="views"></aside>
+    <section class="list-pane">
+      <div class="list-head">
+        <input id="search" type="search" placeholder="Zoek klant, ordernummer, tekst…">
+        <button id="btn-test" class="ghost small" title="Een testbericht laten binnenkomen">+ Test</button>
+      </div>
+      <div id="conv-list" class="conv-list"></div>
+    </section>
+    <section class="thread-pane" id="thread-pane"><div class="empty">Kies een gesprek</div></section>
+    <aside class="side-pane" id="side-pane"></aside>
+  </section>
+
+  <section id="tab-dashboard" class="tab page"></section>
+  <section id="tab-leren" class="tab page"></section>
+  <section id="tab-regels" class="tab page"></section>
+  <section id="tab-kennis" class="tab page"></section>
+  <section id="tab-instellingen" class="tab page"></section>
+</main>
+
+<div id="modal" class="modal hidden"><div class="modal-card" id="modal-card"></div></div>
+<div id="toast" class="toast hidden"></div>
+<script src="/app.js"></script>
+</body>
+</html>
