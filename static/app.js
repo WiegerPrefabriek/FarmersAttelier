@@ -124,6 +124,10 @@ const VIEWS = [
 ];
 function renderViews() {
   const c = state.counts || {};
+  // Smal scherm: dezelfde views als dropdown boven de lijst.
+  let sel = $("#view-select");
+  if (!sel) { sel = document.createElement("select"); sel.id = "view-select"; sel.className = "view-select"; $(".list-head").before(sel); sel.onchange = () => { state.view = sel.value; localStorage.setItem("fa_view", state.view); renderViews(); loadList(); }; }
+  sel.innerHTML = VIEWS.map(([kop, items]) => `<optgroup label="${kop}">` + items.map(([k, l]) => `<option value="${k}" ${state.view === k ? "selected" : ""}>${l}${c[k] != null && c[k] !== "" ? " (" + c[k] + ")" : ""}</option>`).join("") + "</optgroup>").join("");
   $("#views").innerHTML = VIEWS.map(([kop, items]) => `<h4>${kop}</h4>` + items.map(([k, l]) => {
     const n = c[k] ?? (k.startsWith("kanaal:") ? "" : 0);
     const hot = (k === "mens_nodig" || k === "high" || k === "goedkeuring") && n > 0;
@@ -182,6 +186,7 @@ async function loadActionsList() {
 // ---------------------------------------------------------------------------
 async function openConversation(id, silent) {
   state.currentId = id;
+  $("#tab-inbox").classList.add("has-conv");
   $$("#conv-list .conv").forEach((x) => x.classList.toggle("active", Number(x.dataset.id) === id));
   try {
     const d = await api(`/api/conversations/${id}`);
@@ -243,7 +248,7 @@ function renderThread(d) {
 
   pane.innerHTML = `
     <div class="thread-head">
-      <div class="thread-title">${esc(c.subject || "(geen onderwerp)")} <span class="pill">${CHAN[c.channel]} · ${c.via}</span>
+      <div class="thread-title"><button class="ghost small btn-back" id="btn-back">← Lijst</button>${esc(c.subject || "(geen onderwerp)")} <span class="pill">${CHAN[c.channel]} · ${c.via}</span>
         ${c.status !== "open" ? `<span class="pill status-${c.status}">${c.status === "closed" ? "Gesloten" : c.status === "snoozed" ? "Gesnoozed tot " + fmtDate(c.snooze_until) : "Spam"}</span>` : ""}
         ${(c.tags || []).map((t) => `<span class="pill tag">${esc(t)} <span data-untag="${esc(t)}" style="cursor:pointer">×</span></span>`).join("")}
         <button class="ghost small" id="btn-tag">+ tag</button></div>
@@ -294,6 +299,7 @@ function bindThread(d, draft) {
     await api(`/api/conversations/${id}/note`, { body: txt }); state.noteMode = false; openConversation(id);
   });
   $("#btn-note-toggle").onclick = () => { state.noteMode = !state.noteMode; renderThread(d); };
+  $("#btn-back").onclick = () => { $("#tab-inbox").classList.remove("has-conv"); };
   $("#composer-text").addEventListener("keydown", (e) => { if ((e.metaKey || e.ctrlKey) && e.key === "Enter") (state.noteMode ? $("#btn-send-note") : $("#btn-send"))?.click(); });
   $("#btn-regen").onclick = async () => { $("#btn-regen").disabled = true; toast("AI maakt een nieuw concept…"); try { await api(`/api/conversations/${id}/regenerate`, {}); openConversation(id); } catch (e) { toast(e.message, true); } };
   $("#btn-analyze")?.addEventListener("click", () => $("#btn-regen").click());

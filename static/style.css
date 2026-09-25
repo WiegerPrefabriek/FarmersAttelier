@@ -165,7 +165,21 @@ textarea { width: 100%; resize: vertical; line-height: 1.45; }
 .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
 @media (max-width: 1250px) { #tab-inbox.active { grid-template-columns: 170px 290px 1fr 290px; } }
 @media (max-width: 1100px) { .grid2, .grid3 { grid-template-columns: 1fr; } #tab-inbox.active { grid-template-columns: 150px 260px 1fr; } .side-pane { display: none; } }
-@media (max-width: 800px) { #tab-inbox.active { grid-template-columns: 1fr; } .views, .list-pane { display: none; } .views.show, .list-pane.show { display: flex; } }
+/* Smal scherm (telefoon of smalle pane): lijst óf gesprek, met een terug-knop. */
+.btn-back { display: none; }
+@media (max-width: 800px) {
+  #tab-inbox.active { grid-template-columns: 1fr; }
+  .views { display: none; }
+  .thread-pane { display: none; }
+  #tab-inbox.has-conv .list-pane { display: none; }
+  #tab-inbox.has-conv .thread-pane { display: flex; }
+  .btn-back { display: inline-block; }
+  .tabs button { padding: 8px 8px; }
+  .list-head { flex-wrap: wrap; }
+  .list-head::before { content: ""; }
+}
+.view-select { width: 100%; margin-bottom: 6px; display: none; }
+@media (max-width: 800px) { .view-select { display: block; } }
 .panel { background: #fff; border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 16px; }
 .panel h3 { margin: 0 0 10px; font-size: 14px; display: flex; align-items: center; gap: 8px; }
 table.t { width: 100%; border-collapse: collapse; font-size: 13px; }
