@@ -207,8 +207,24 @@ kan alleen via de website (er is geen `gh` op deze Mac).
 2. Repository name: `farmers-atelier-support`. **Private**. Géén README, géén
    .gitignore, géén licentie aanvinken (die staan al in de map).
 3. Klik **Create repository**.
-**Stuur mij daarna:** "gedaan" — dan push ik. (Als de repo er al is als ik dit lees,
-push ik direct; zie de README voor de status.)
+**Stuur mij daarna:** "gedaan" — dan push ik. Of doe het zelf vanuit de projectmap:
+
+```bash
+git push -u origin main
+```
+
+(De remote `origin` staat al ingesteld op `git@github.com:WiegerPrefabriek/farmers-atelier-support.git`;
+de eerste push op 25-09-2026 mislukte omdat de repository nog niet bestond. Alles staat
+lokaal gecommit op branch `main`.)
+
+Op de andere laptop daarna:
+```bash
+git clone git@github.com:WiegerPrefabriek/farmers-atelier-support.git
+cd farmers-atelier-support
+python3 -m venv .venv && ./.venv/bin/pip install -r requirements.txt
+./.venv/bin/python mock/generate.py
+./.venv/bin/python run.py
+```
 
 ---
 
