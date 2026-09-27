@@ -90,12 +90,25 @@ $("#tabs").addEventListener("click", (e) => {
   const b = e.target.closest("button"); if (!b) return;
   showTab(b.dataset.tab);
 });
-function showTab(tab) {
+const TABS = ["inbox", "dashboard", "voorraad", "leren", "regels", "kennis", "instellingen"];
+
+function showTab(tab, viaAdres) {
+  if (!TABS.includes(tab)) tab = "inbox";
   state.tab = tab;
   $$("#tabs button").forEach((x) => x.classList.toggle("active", x.dataset.tab === tab));
   $$(".tab").forEach((x) => x.classList.toggle("active", x.id === "tab-" + tab));
+  // Het adres meeschrijven, zodat elke tab een eigen link heeft die je kunt
+  // bewaren of doorsturen. Komt de wissel juist ván het adres (terugknop), dan
+  // niet nog eens terugschrijven.
+  if (!viaAdres) {
+    const nieuw = tab === "inbox" ? location.pathname : location.pathname + "#" + tab;
+    if (location.pathname + location.hash !== nieuw) history.pushState({ tab }, "", nieuw);
+  }
   ({ dashboard: renderDashboard, voorraad: renderVoorraad, leren: renderLeren, regels: renderRegels, kennis: renderKennis, instellingen: renderInstellingen })[tab]?.();
 }
+
+// Terug- en vooruitknop van de browser laten de tabs volgen.
+window.addEventListener("popstate", () => showTab((location.hash || "#inbox").slice(1), true));
 
 function connectLive() {
   const dot = $("#live-dot");
@@ -688,4 +701,8 @@ document.addEventListener("keydown", (e) => {
 });
 
 initSplitters();
-boot().catch((e) => { toast("Opstarten mislukt: " + e.message, true); console.error(e); });
+boot()
+  // Staat er een tab in het adres (#voorraad), open die dan meteen — zo werkt
+  // een doorgestuurde link naar één tab ook echt.
+  .then(() => { const h = (location.hash || "").slice(1); if (h && h !== "inbox") showTab(h, true); })
+  .catch((e) => { toast("Opstarten mislukt: " + e.message, true); console.error(e); });
