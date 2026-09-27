@@ -252,3 +252,62 @@ table.t tr.click { cursor: pointer; } table.t tr.click:hover { background: #fafa
 .spark-labels { display: flex; gap: 3px; font-size: 10px; color: var(--faint); }
 .spark-labels div { flex: 1; text-align: center; overflow: hidden; }
 kbd { font-size: 11px; background: #eee; border-radius: 4px; padding: 1px 5px; border: 1px solid #ddd; }
+
+/* ---------------------------------------------------------------------------
+   i-knopjes met wolkjes (dashboard-standaarden §1)
+   Het wolkje hangt in één vast venster boven de pagina: in een tabel die
+   horizontaal scrolt wordt alles wat buiten de cel valt anders afgeknipt.
+   --------------------------------------------------------------------------- */
+.doelwrap { display: inline-flex; align-items: center; vertical-align: middle; }
+.ibol {
+  width: 15px; height: 15px; min-width: 15px; padding: 0; margin-left: 5px;
+  border-radius: 50%; border: 1px solid var(--line-strong); background: #fff;
+  color: var(--muted); font-size: 10px; line-height: 1; font-style: italic;
+  font-weight: 700; display: inline-flex; align-items: center; justify-content: center;
+}
+.ibol:hover, .ibol.vast { background: var(--accent); color: #fff; border-color: var(--accent); }
+.doelwrap .wolkje { display: none; }
+.wolkvenster {
+  position: fixed; z-index: 400; max-width: 340px; padding: 9px 11px;
+  background: #1d1f1b; color: #f2f2ee; border-radius: 8px; font-size: 12.5px;
+  line-height: 1.45; box-shadow: 0 6px 20px rgba(0,0,0,.28); pointer-events: none;
+}
+.wolkvenster.vast { pointer-events: auto; }
+.wolkvenster .wfase { display: block; font-weight: 700; margin-bottom: 3px; }
+.wolkvenster .wrij { display: block; }
+.wolkvenster .wbron { display: block; margin-top: 5px; color: #a8ada2; font-size: 11.5px; }
+
+/* --- tabellen (§2) --- */
+.dtab { width: 100%; border-collapse: collapse; font-size: 13px; }
+.dtab th, .dtab td { padding: 6px 9px; border-bottom: 1px solid var(--line); text-align: left; }
+.dtab th { font-weight: 600; color: var(--muted); font-size: 12px; white-space: nowrap; }
+.dtab th.sorteer { cursor: pointer; user-select: none; }
+.dtab th.sorteer:hover { color: var(--text); }
+.dtab th .pijl { opacity: .35; margin-left: 3px; font-size: 10px; }
+.dtab th.actief .pijl { opacity: 1; }
+.dtab td.num, .dtab th.num { text-align: right; font-variant-numeric: tabular-nums; }
+.dtab tr.leegrij td { color: var(--faint); }
+.dtab tr.totaal td { border-top: 2px solid var(--line-strong); font-weight: 700; background: #f7f7f4; }
+.dtab tbody tr.klik { cursor: pointer; }
+.dtab tbody tr.klik:hover { background: #fafaf7; }
+.dtab tr.maatrij td { background: #fbfbf8; font-size: 12.5px; }
+.dtab tr.maatrij td:first-child { padding-left: 30px; color: var(--muted); }
+.tabelbak { overflow-x: auto; }
+.pijltje { display: inline-block; width: 12px; transition: transform .12s; color: var(--faint); }
+.pijltje.open { transform: rotate(90deg); }
+
+/* --- kaarten en kerncijfers --- */
+.vk { background: #fff; border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 16px; }
+.vk > h3 { margin: 0 0 10px; font-size: 14px; display: flex; align-items: center; gap: 2px; }
+.vkpi { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.vkpi .kaart { background: #fff; border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; }
+.vkpi .v { font-size: 26px; font-weight: 800; line-height: 1.15; font-variant-numeric: tabular-nums; }
+.vkpi .l { font-size: 12px; color: var(--muted); margin-top: 3px; display: flex; align-items: center; }
+.vkpi .kaart.zacht .v { color: var(--muted); }
+.balkje { height: 7px; background: #ecece8; border-radius: 4px; overflow: hidden; min-width: 60px; }
+.balkje > i { display: block; height: 100%; background: var(--accent); }
+.herkomst { font-size: 11.5px; color: var(--faint); margin-top: 8px; }
+.waarschuw { background: var(--warn-soft); border: 1px solid #e8d5a8; color: #6b4d12; border-radius: 8px; padding: 9px 12px; font-size: 12.5px; margin-bottom: 14px; }
+.instelrij { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; font-size: 13px; margin-bottom: 12px; }
+.instelrij label { display: flex; align-items: center; gap: 5px; }
+.instelrij input[type=number] { width: 66px; }

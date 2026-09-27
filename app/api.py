@@ -8,7 +8,7 @@ import os
 import re
 
 import config
-from app import db, knowledge, pipeline, service, stats
+from app import db, knowledge, pipeline, service, stats, voorraad as voorraad_mod
 from app.ai import agent as ai
 from app.integrations import fulfillment, shopify
 from app.taxonomy import CHANNELS, ESCALATION_FLAGS, GROUPS, INTENTS, LEVELS, LEVEL_ORDER, MISSING_INFO_LABELS, PRIORITIES, intent_group
@@ -388,3 +388,20 @@ def fulfillment_event(params, body, user_id):
     fulfillment.record_event(body["order_name"], body["stage"], body.get("occurred_at") or db.now(),
                              carrier=body.get("carrier"), tracking=body.get("tracking"), detail=body.get("detail"), raw=body)
     return {"ok": True}
+
+
+def voorraad(params, body, user_id):
+    """Voorraad, retouren en de kosten van hergebruik, voor de Voorraad-tab."""
+    return voorraad_mod.overzicht()
+
+
+def voorraad_kosten(params, body, user_id):
+    """Herrekent het kostenmodel met andere aannames (weken opslag, land).
+
+    `params` is een dict van strings (de router heeft de querystring al platgeslagen),
+    dus niet indexeren met [0] — dan pak je het eerste teken en wordt "52" ineens 5.
+    """
+    weken = _int(params.get("weken") or 12, "weken")
+    land = (params.get("land") or "NL").strip().upper()
+    aantal = _int(params.get("aantal") or 0, "aantal")
+    return voorraad_mod.kosten_hergebruik(aantal=aantal or None, weken_opslag=weken, land=land)

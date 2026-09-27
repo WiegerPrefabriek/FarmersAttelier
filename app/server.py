@@ -61,6 +61,8 @@ ROUTES = [
     ("POST", r"^/api/simulate$", api.simulate),
     ("GET", r"^/api/integrations$", api.integrations_status),
     ("POST", r"^/api/fulfillment/event$", api.fulfillment_event),
+    ("GET", r"^/api/voorraad$", api.voorraad),
+    ("GET", r"^/api/voorraad/kosten$", api.voorraad_kosten),
 ]
 _COMPILED = [(m, re.compile(p), f) for m, p, f in ROUTES]
 

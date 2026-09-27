@@ -94,7 +94,7 @@ function showTab(tab) {
   state.tab = tab;
   $$("#tabs button").forEach((x) => x.classList.toggle("active", x.dataset.tab === tab));
   $$(".tab").forEach((x) => x.classList.toggle("active", x.id === "tab-" + tab));
-  ({ dashboard: renderDashboard, leren: renderLeren, regels: renderRegels, kennis: renderKennis, instellingen: renderInstellingen })[tab]?.();
+  ({ dashboard: renderDashboard, voorraad: renderVoorraad, leren: renderLeren, regels: renderRegels, kennis: renderKennis, instellingen: renderInstellingen })[tab]?.();
 }
 
 function connectLive() {
