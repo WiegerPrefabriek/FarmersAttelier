@@ -11,6 +11,7 @@ import config
 from app import db, knowledge, pipeline, service, stats, voorraad as voorraad_mod
 from app.ai import agent as ai
 from app.integrations import fulfillment, shopify
+from app.channels import email_microsoft
 from app.taxonomy import CHANNELS, ESCALATION_FLAGS, GROUPS, INTENTS, LEVELS, LEVEL_ORDER, MISSING_INFO_LABELS, PRIORITIES, intent_group
 
 
@@ -405,3 +406,30 @@ def voorraad_kosten(params, body, user_id):
     land = (params.get("land") or "NL").strip().upper()
     aantal = _int(params.get("aantal") or 0, "aantal")
     return voorraad_mod.kosten_hergebruik(aantal=aantal or None, weken_opslag=weken, land=land)
+
+
+def integrations_test(params, body, user_id):
+    """Probeert elke koppeling echt aan te spreken en zegt wat eruit komt.
+
+    Niet 'staat er een sleutel in het bestand' maar 'komen we binnen' — dat is
+    het enige dat telt, en het scheelt zoeken als er iets net niet klopt.
+    """
+    uit = {}
+
+    uit["microsoft"] = email_microsoft.test()
+
+    try:
+        c = shopify.client()
+        if not c.configured:
+            uit["shopify"] = {"ok": False, "reden": "niet ingesteld: winkeldomein plus client id en secret nodig"}
+        else:
+            d = c.graphql("{ shop { name myshopifyDomain currencyCode } }")
+            winkel = (d.get("data") or {}).get("shop") or {}
+            uit["shopify"] = {"ok": bool(winkel), "winkel": winkel.get("name"),
+                              "domein": winkel.get("myshopifyDomain"), "valuta": winkel.get("currencyCode")}
+    except Exception as e:  # noqa: BLE001
+        uit["shopify"] = {"ok": False, "reden": str(e)[:400]}
+
+    uit["anthropic"] = {"ok": bool(config.anthropic_key()),
+                        "modus": ai.agent_mode()}
+    return {"koppelingen": uit}

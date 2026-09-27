@@ -7,7 +7,7 @@ Niet geconfigureerd kanaal → mock: het bericht wordt als verzonden gemarkeerd 
 from __future__ import annotations
 
 from app import db
-from app.channels import email_gmail, email_imap, meta, tiktok
+from app.channels import email_gmail, email_imap, email_microsoft, meta, tiktok
 
 
 def _mock(msg_id: int, reden: str) -> dict:
@@ -27,6 +27,9 @@ def send(conv: dict, body: str, msg_id: int) -> dict:
         onderwerp = conv.get("subject") or "Je bericht aan Farmers Atelier"
         if not onderwerp.lower().startswith("re:"):
             onderwerp = "Re: " + onderwerp
+        if email_microsoft.configured():
+            return email_microsoft.send(klant["email"], onderwerp, body, in_reply_to=laatste_in.get("external_id"),
+                                        thread_id=conv.get("thread_id"))
         if email_gmail.configured():
             return email_gmail.send(klant["email"], onderwerp, body, in_reply_to=laatste_in.get("external_id"),
                                     references=bron.get("references"), thread_id=conv.get("external_thread_id"))

@@ -61,10 +61,26 @@ def anthropic_key() -> str | None:
 
 
 def integratie_status() -> dict:
-    """Welke koppelingen zijn echt geconfigureerd? Voor het dashboard en de logs."""
+    """Welke koppelingen zijn echt geconfigureerd? Voor het dashboard en de logs.
+
+    Shopify kan op twee manieren: een oud `admin_token` van vóór 2026, of een
+    client id + secret waarmee de app zelf een token ophaalt. Alleen op het
+    admin_token kijken zou een correct ingestelde nieuwe app als 'niet gekoppeld'
+    tonen.
+    """
+    shopify_ok = bool(secret("shopify", "store_domain")) and bool(
+        secret("shopify", "admin_token")
+        or (secret("shopify", "client_id") and secret("shopify", "client_secret")))
+    ms_modus = secret("microsoft", "mode", default="application")
+    microsoft_ok = bool(
+        secret("microsoft", "tenant_id") and secret("microsoft", "client_id")
+        and secret("microsoft", "postbus")
+        and (secret("microsoft", "client_secret") if ms_modus == "application"
+             else secret("microsoft", "refresh_token")))
     return {
         "anthropic": bool(anthropic_key()),
-        "shopify": bool(secret("shopify", "admin_token") and secret("shopify", "store_domain")),
+        "shopify": shopify_ok,
+        "microsoft": microsoft_ok,
         "gmail": bool(secret("gmail", "refresh_token")),
         "meta": bool(secret("meta", "page_access_token")),
         "tiktok": bool(secret("tiktok", "access_token")),

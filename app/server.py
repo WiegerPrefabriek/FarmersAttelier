@@ -23,7 +23,7 @@ import urllib.parse
 
 import config
 from app import api, db, events, knowledge, pipeline, rules, service
-from app.channels import email_gmail, email_imap, meta, shopify_webhooks, tiktok
+from app.channels import email_gmail, email_imap, email_microsoft, meta, shopify_webhooks, tiktok
 
 ROUTES = [
     ("GET", r"^/api/bootstrap$", api.bootstrap),
@@ -60,6 +60,7 @@ ROUTES = [
     ("GET", r"^/api/orders/(?P<name>[^/]+)$", api.order),
     ("POST", r"^/api/simulate$", api.simulate),
     ("GET", r"^/api/integrations$", api.integrations_status),
+    ("GET", r"^/api/integrations/test$", api.integrations_test),
     ("POST", r"^/api/fulfillment/event$", api.fulfillment_event),
     ("GET", r"^/api/voorraad$", api.voorraad),
     ("GET", r"^/api/voorraad/kosten$", api.voorraad_kosten),
@@ -275,7 +276,7 @@ def achtergrond():
     while True:
         try:
             pipeline.drain_queue(HANDLERS)
-            for fetch in (email_gmail.fetch_new, email_imap.fetch_new, tiktok.fetch_new):
+            for fetch in (email_microsoft.fetch_new, email_gmail.fetch_new, email_imap.fetch_new, tiktok.fetch_new):
                 try:
                     for inbound in fetch():
                         pipeline.ingest(inbound)
