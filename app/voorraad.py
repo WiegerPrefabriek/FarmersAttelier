@@ -207,6 +207,21 @@ def kosten_hergebruik(aantal: int | None = None, weken_opslag: int = 12,
     return uit
 
 
+def dropwaarde() -> dict:
+    """Wat er ligt en wat het waard is, volgens de opgave van Wieger.
+
+    Bewust gescheiden van de Excel-telling. De Excel telt 1146 shirts en kent geen
+    aantallen voor truien; de opgave is 1750 shirts en 400 truien. Beide worden
+    getoond, want een verschil van 604 stuks verzwijgen zou het dashboard
+    betrouwbaarder laten lijken dan het is.
+    """
+    d = _lees("dropwaarde.json")
+    if not d:
+        return {"beschikbaar": False}
+    d["beschikbaar"] = True
+    return d
+
+
 def overzicht() -> dict:
     """Alles wat de Voorraad-tab nodig heeft, in één keer."""
     a = artikelen()
@@ -214,6 +229,7 @@ def overzicht() -> dict:
     return {
         "artikelen": a,
         "retouren": r,
+        "drop": dropwaarde(),
         "kosten": kosten_hergebruik(aantal=r["aantal_zendingen"]),
         "tarieven": _tarieven(),
     }

@@ -133,6 +133,29 @@ function tekenVoorraad() {
   const a = VOORRAAD.artikelen, r = VOORRAAD.retouren, k = VOORRAAD.kosten;
   const bronA = a.bron || "Excel", bronK = k.bron || "Innostock-offerte";
 
+  // De drop: wat er werkelijk ligt en wat het waard is. Staat bovenaan, want dat
+  // is het cijfer waar het om draait; de Excel-telling staat eronder als controle.
+  const d = VOORRAAD.drop || {};
+  const dropblok = !d.beschikbaar ? "" : `<div class="vk">
+    <h3>Wat er ligt en wat het waard is
+      ${iknop("Opgave van Wieger, peildatum " + (d.peildatum || "") + ". Dit zijn RETOUREN: teruggekomen bestellingen die opnieuw verkocht gaan worden. Geen nieuwe voorraad en geen restant van een inkooporder.", "Dropwaarde", d.bron || "opgave")}</h3>
+    <div class="tabelbak"><table class="dtab"><thead><tr><th>Groep</th><th class="num">Aantal</th>
+      <th class="num">Stukprijs</th><th class="num">Waarde</th></tr></thead><tbody>
+      ${(d.regels || []).map((r) => `<tr><td>${esc(r.groep)}<div class="faint">${esc(r.toelichting || "")}</div></td>
+        <td class="num">${getal(r.aantal)}</td><td class="num">${eur(r.stukprijs_eur)}</td>
+        <td class="num">${eur(r.waarde_eur)}</td></tr>`).join("")}
+      <tr class="totaal"><td>Totale dropwaarde</td><td class="num">${getal(d.totaal_stuks)}</td>
+        <td></td><td class="num">${eur(d.totaal_waarde_eur)}</td></tr>
+    </tbody></table></div>
+    <div class="waarschuw" style="margin-top:12px"><b>De Excel telt anders.</b>
+      Daarin staan ${getal((d.telling_excel || {}).shirts)} shirts en géén aantallen voor truien —
+      een verschil van ${getal(d.regels[0].aantal - (d.telling_excel || {}).shirts)} stuks, plus de
+      ${getal(d.regels[1].aantal)} truien die er helemaal niet in staan. De opgave hierboven is leidend;
+      de tabellen hieronder komen uit de Excel en zijn dus onvolledig.
+      <div style="margin-top:6px">De voorraadstanden in <b>Shopify</b> zijn evenmin bruikbaar: die staan
+      op veel varianten negatief, omdat er meer verkocht is dan geregistreerd stond.</div></div>
+  </div>`;
+
   const onbekend = a.varianten_zonder_voorraadgetal;
   const waarschuwing = onbekend ? `<div class="waarschuw"><b>Let op:</b> van ${getal(onbekend)} van de
     ${getal(a.totaal_varianten)} varianten staat géén voorraadgetal in de Excel — dat zijn de truien en
@@ -140,8 +163,10 @@ function tekenVoorraad() {
     komt de voorraad daarvandaan en klopt dit vanzelf.</div>` : "";
 
   const kpis = `<div class="vkpi">
-      <div class="kaart"><div class="v">${getal(a.totaal_voorraad)}</div><div class="l">Stuks op voorraad
-        ${iknop("Opgeteld uit de kolom 'Aantal op voorraad' van de Excel. Alleen shirts en longsleeves hebben daar een getal staan; truien en accessoires niet, die zitten hier dus niet in.", "Stuks op voorraad", bronA)}</div></div>
+      <div class="kaart"><div class="v">${getal((VOORRAAD.drop || {}).totaal_stuks || a.totaal_voorraad)}</div><div class="l">Stuks (retouren)
+        ${iknop("Opgave van Wieger: circa 1.750 shirts en 400 truien, allemaal retouren. De Excel telt maar 1146 shirts en kent geen truien, dus die is onvolledig. De voorraad in Shopify staat negatief en is onbruikbaar.", "Stuks op voorraad", "opgave Wieger")}</div></div>
+      <div class="kaart"><div class="v">${eur((VOORRAAD.drop || {}).totaal_waarde_eur || 0)}</div><div class="l">Dropwaarde
+        ${iknop("Shirts tegen 25 euro en truien tegen 50 euro per stuk. Dit is verkoopwaarde, niet wat het opbrengt: van elk verkocht stuk gaat nog ruim 11 euro af aan fulfilment.", "Dropwaarde", "opgave Wieger")}</div></div>
       <div class="kaart"><div class="v">${getal(a.totaal_varianten)}</div><div class="l">Varianten
         ${iknop("Elke combinatie van model, kleur en maat telt als één variant. Bijna vijf maten per model gemiddeld.", "Varianten", bronA)}</div></div>
       <div class="kaart"><div class="v">${getal(r.aantal_zendingen)}</div><div class="l">Retourzendingen terug
@@ -233,7 +258,7 @@ function tekenVoorraad() {
 
   el.innerHTML = `<h2 style="margin:0 0 4px">Voorraad en retouren</h2>
     <p class="muted" style="margin:0 0 16px">Wat ligt er, wat kwam er terug, en wat kost het om dat opnieuw te verkopen.</p>
-    ${waarschuwing}${kpis}${groeptabel}${maattabel}${modeltabel}${retourblok}${kostenblok}
+    ${dropblok}${waarschuwing}${kpis}${groeptabel}${maattabel}${modeltabel}${retourblok}${kostenblok}
     <p class="herkomst">Artikelen en retourscans: ${esc(bronA)} · Tarieven: ${esc(bronK)}</p>`;
 
   $$("#v-modellen tr.klik").forEach((tr) => {
