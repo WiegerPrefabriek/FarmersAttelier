@@ -26,7 +26,7 @@ import threading
 import traceback
 
 import config
-from app import db, events, rules
+from app import db, events, nepshop, rules
 from app.ai import agent as ai
 from app.integrations import fulfillment, shopify
 from app.taxonomy import INTENTS, level_rank
@@ -307,6 +307,37 @@ def _process(conv_id: int, reason: str, force_draft: bool) -> dict:
 
     # 5. Concept
     db.update("conversations", conv_id, wijzig)
+
+    # Tijdelijke stand: gaat dit over een bestelling die niet van ons is? Dan een
+    # vast antwoord in plaats van het gewone retourantwoord. De beoordeling kijkt
+    # eerst of de order in Shopify bestaat, zodat een echte klant dit nooit krijgt.
+    oordeel = nepshop.beoordeel(an.get("intent"), an.get("order_ref") or conv.get("order_name"),
+                                " ".join(m.get("body_text") or "" for m in msgs))
+    if oordeel.get("van_toepassing"):
+        d = {"body": nepshop.antwoord_voor((customer or {}).get("name")),
+             "kind": "answer", "used_knowledge": ["andere-webshop"],
+             "model": "regel:nepshop", "is_mock": 0}
+        v = {"ok": True, "issues": [], "contains_promise": False, "grounded": True,
+             "policy_ok": True, "privacy_ok": True, "tone_ok": True,
+             "suggested_fix": None, "reden": oordeel["reden"]}
+        db.update("conversations", conv_id, {
+            "needs_human": 1,
+            "needs_human_reason": f"Bestelling van een andere webshop — {oordeel['reden']}. Nalezen voor je verstuurt.",
+            "priority": "high"})
+        db.execute("UPDATE ai_drafts SET status = 'superseded' WHERE conversation_id = ? AND status = 'pending'", (conv_id,))
+        draft_id = db.insert("ai_drafts", {
+            "conversation_id": conv_id, "analysis_id": an_id, "body": d["body"], "kind": "answer",
+            "verifier": v, "used_knowledge": ["andere-webshop"], "model": d["model"], "is_mock": 0})
+        events.emit("ai-drafted", conversation_id=conv_id, actor_type="system",
+                    data={"draft_id": draft_id, "nepshop": True, "reden": oordeel["reden"]})
+        db.update("conversations", conv_id, {"ai_status": "drafted"})
+        return {"analysis_id": an_id, "level": niveau, "draft_id": draft_id,
+                "auto_sent": False, "nepshop": oordeel["reden"]}
+    if oordeel.get("mens_nodig"):
+        db.update("conversations", conv_id, {
+            "needs_human": 1,
+            "needs_human_reason": f"Mogelijk andere webshop, maar {oordeel['reden']}"})
+
     d = agent.draft(conv, msgs, customer, orders, order, ful, an)
     v = agent.verify(conv, msgs, customer, order, d["body"], an)
     db.execute("UPDATE ai_drafts SET status = 'superseded' WHERE conversation_id = ? AND status = 'pending'", (conv_id,))

@@ -598,6 +598,7 @@ async function renderInstellingen() {
         <div class="form-row"><label>Nu actief</label><span class="pill ${b.agent_mode}">${b.agent_mode}</span></div>
         <div class="form-row"><label>Max. niveau (globaal)</label><select id="s-global">${lvl.map((l) => `<option value="${l}" ${b.settings.global_max_level === l ? "selected" : ""}>${esc(l)}</option>`).join("")}</select></div>
         <div class="form-row"><label>Auto-versturen</label><label><input type="checkbox" id="s-auto" ${b.settings.auto_send_enabled ? "checked" : ""}> AI mag zelf versturen bij niveau 3+ én goedgekeurde controle</label></div>
+        <div class="form-row" style="align-items:flex-start"><label>Andere webshop</label><div><label><input type="checkbox" id="s-nepshop" ${b.settings.nepshop_modus ? "checked" : ""}> Tijdelijke stand: vragen over bestellingen die niet van ons zijn krijgen het vaste antwoord</label><div class="faint" style="margin-top:4px;max-width:520px">Geldt voor retouren, refunds, verkeerde of beschadigde artikelen en verzendvragen. Bestaat het ordernummer wél in Shopify, dan krijgt die klant dit antwoord <b>niet</b> — dan is het een echte bestelling en gaat het gesprek de gewone weg. Zet deze stand uit zodra de winkel weer open is.</div></div></div>
         <div class="form-row"><label>Tone of voice</label><textarea id="s-tone" rows="3">${esc(b.settings.tone || "")}</textarea></div>
         <div class="modal-foot"><button class="primary" id="save-ai">Opslaan</button></div></div>
       <div class="panel"><h3>Koppelingen</h3>
@@ -606,7 +607,7 @@ async function renderInstellingen() {
       <div class="panel"><h3>Kennisbank-status</h3>${st.knowledge.map((k) => `<div class="integ"><span class="dot ${k.complete ? "ok" : "todo"}"></span>${esc(k.title)}<span class="faint">${k.complete ? "compleet" : "nog TODO's"}</span></div>`).join("")}</div>
     </div></div>`;
   $("#save-levels").onclick = async () => { const levels = {}; $$("[data-level]", el).forEach((s) => levels[s.dataset.level] = s.value); await api("/api/settings", { intent_levels: levels }); toast("Niveaus opgeslagen"); };
-  $("#save-ai").onclick = async () => { await api("/api/settings", { ai_mode: $("#s-mode").value, global_max_level: $("#s-global").value, auto_send_enabled: $("#s-auto").checked, tone: $("#s-tone").value }); toast("Opgeslagen"); boot(); renderInstellingen(); };
+  $("#save-ai").onclick = async () => { await api("/api/settings", { ai_mode: $("#s-mode").value, global_max_level: $("#s-global").value, auto_send_enabled: $("#s-auto").checked, nepshop_modus: $("#s-nepshop").checked, tone: $("#s-tone").value }); toast("Opgeslagen"); boot(); renderInstellingen(); };
 }
 
 // ---------------------------------------------------------------------------

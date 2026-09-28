@@ -234,3 +234,47 @@ class TestParsers(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestNepshopStand(Basis):
+    """De tijdelijke stand voor bestellingen die niet van ons zijn.
+
+    Het gevaar zit niet in het antwoord zelf maar in wie het krijgt: een echte
+    klant die te horen krijgt dat zijn bestelling niet van ons is, is een klant
+    die we kwijt zijn. Vandaar deze tests op de grens.
+    """
+
+    def setUp(self):
+        from app import nepshop
+        self.nepshop = nepshop
+        db.set_setting("nepshop_modus", True)
+
+    def tearDown(self):
+        db.set_setting("nepshop_modus", False)
+
+    def test_uit_betekent_nooit(self):
+        db.set_setting("nepshop_modus", False)
+        self.assertFalse(self.nepshop.beoordeel("return.request", "99999")["van_toepassing"])
+
+    def test_vreemd_ordernummer_krijgt_het_antwoord(self):
+        uit = self.nepshop.beoordeel("return.request", "19144")
+        self.assertTrue(uit["van_toepassing"])
+
+    def test_ons_eigen_nummer_krijgt_het_antwoord_niet(self):
+        # #1008 past bij onze reeks. Zonder Shopify kunnen we het niet nagaan,
+        # en dan hoort het naar een mens — niet naar het standaardantwoord.
+        uit = self.nepshop.beoordeel("return.request", "#1008")
+        self.assertFalse(uit["van_toepassing"])
+        self.assertTrue(uit["mens_nodig"])
+
+    def test_productvraag_valt_erbuiten(self):
+        self.assertFalse(self.nepshop.beoordeel("product.question", "19144")["van_toepassing"])
+
+    def test_zonder_ordernummer_wel(self):
+        self.assertTrue(self.nepshop.beoordeel("refund.request", None)["van_toepassing"])
+
+    def test_antwoord_gebruikt_de_voornaam(self):
+        tekst = self.nepshop.antwoord_voor("Marvin Born")
+        self.assertIn("Hoi Marvin", tekst)
+        self.assertIn("Fraudehelpdesk", tekst)
+        self.assertNotIn("{voornaam}", tekst)

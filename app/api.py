@@ -37,7 +37,8 @@ def bootstrap(params, body, user_id):
         "level_order": LEVEL_ORDER, "priorities": PRIORITIES, "missing_info": MISSING_INFO_LABELS,
         "escalation_flags": ESCALATION_FLAGS, "intent_levels": levels,
         "settings": {"ai_mode": db.setting("ai_mode", "auto"), "auto_send_enabled": bool(db.setting("auto_send_enabled", False)),
-                     "global_max_level": db.setting("global_max_level", "action"), "tone": db.setting("tone", "")},
+                     "global_max_level": db.setting("global_max_level", "action"), "tone": db.setting("tone", ""),
+                     "nepshop_modus": bool(db.setting("nepshop_modus", False))},
         "integrations": config.integratie_status(), "agent_mode": ai.agent_mode(),
         "counts": stats.view_counts(user_id), "brand": config.BRAND,
     }
@@ -339,6 +340,8 @@ def settings_save(params, body, user_id):
             db.set_setting(k, body[k])
     if "auto_send_enabled" in body:
         db.set_setting("auto_send_enabled", bool(body["auto_send_enabled"]))
+    if "nepshop_modus" in body:
+        db.set_setting("nepshop_modus", bool(body["nepshop_modus"]))
     return {"ok": True}
 
 
