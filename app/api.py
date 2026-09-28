@@ -427,8 +427,8 @@ def integrations_test(params, body, user_id):
         if not c.configured:
             uit["shopify"] = {"ok": False, "reden": "niet ingesteld: winkeldomein plus client id en secret nodig"}
         else:
-            d = c.graphql("{ shop { name myshopifyDomain currencyCode } }")
-            winkel = (d.get("data") or {}).get("shop") or {}
+            # graphql() geeft de data-laag al terug, dus niet nog eens .get("data").
+            winkel = c.graphql("{ shop { name myshopifyDomain currencyCode } }").get("shop") or {}
             uit["shopify"] = {"ok": bool(winkel), "winkel": winkel.get("name"),
                               "domein": winkel.get("myshopifyDomain"), "valuta": winkel.get("currencyCode")}
     except Exception as e:  # noqa: BLE001
