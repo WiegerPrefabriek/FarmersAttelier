@@ -12,6 +12,7 @@ from app import db, knowledge, pipeline, service, stats, voorraad as voorraad_mo
 from app.ai import agent as ai
 from app.integrations import fulfillment, shopify
 from app.channels import email_microsoft
+from app.integrations import klaviyo
 from app.taxonomy import CHANNELS, ESCALATION_FLAGS, GROUPS, INTENTS, LEVELS, LEVEL_ORDER, MISSING_INFO_LABELS, PRIORITIES, intent_group
 
 
@@ -433,6 +434,7 @@ def integrations_test(params, body, user_id):
     except Exception as e:  # noqa: BLE001
         uit["shopify"] = {"ok": False, "reden": str(e)[:400]}
 
+    uit["klaviyo"] = klaviyo.test()
     uit["anthropic"] = {"ok": bool(config.anthropic_key()),
                         "modus": ai.agent_mode()}
     return {"koppelingen": uit}
