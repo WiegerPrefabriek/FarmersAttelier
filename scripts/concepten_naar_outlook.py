@@ -44,11 +44,17 @@ def main() -> int:
     if not ms.configured():
         return print("Outlook is niet gekoppeld — vul 'microsoft' in .secrets.json.") or 1
 
+    # Eén concept per gesprek, het nieuwste. Zonder deze beperking levert een
+    # gesprek met twee openstaande concepten ook twee Outlook-concepten op, en dat
+    # stond er bij de eerste keer dubbel in.
     sql = """SELECT c.id, c.subject, c.intent, c.order_name,
                     k.name AS klant, k.email AS email,
                     d.id AS draft_id, d.body AS concept
              FROM conversations c
-             JOIN ai_drafts d ON d.conversation_id = c.id AND d.status = 'pending'
+             JOIN ai_drafts d ON d.id = (
+                   SELECT id FROM ai_drafts x
+                   WHERE x.conversation_id = c.id AND x.status = 'pending'
+                   ORDER BY x.id DESC LIMIT 1)
              LEFT JOIN customers k ON k.id = c.customer_id
              WHERE c.channel = 'email' AND c.status = 'open'"""
     args: list = []

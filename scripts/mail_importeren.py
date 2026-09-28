@@ -50,6 +50,11 @@ def berichten_uit(mapnaam: str, vanaf: str | None, maximaal: int = 200) -> list[
 
 
 def naar_inbound(b: dict, mapnaam: str) -> dict | None:
+    """Eén Graph-bericht naar de vorm die de pipeline verwacht.
+
+    Gebruikt bewust dezelfde functie als het kanaal zelf, zodat import en de
+    dagelijkse ronde niet uit elkaar kunnen lopen.
+    """
     adres = ((b.get("from") or {}).get("emailAddress") or {})
     van = (adres.get("address") or "").lower()
     if not van or van == ms.afzender().lower():
@@ -57,17 +62,9 @@ def naar_inbound(b: dict, mapnaam: str) -> dict | None:
     inhoud = (b.get("body") or {}).get("content") or b.get("bodyPreview") or ""
     if ((b.get("body") or {}).get("contentType") or "").lower() == "html":
         inhoud = html_to_text(inhoud)
-    return {
-        "channel": "email",
-        "external_id": b.get("internetMessageId") or b.get("id"),
-        "thread_id": b.get("conversationId"),
-        "from_email": van,
-        "from_name": adres.get("name") or "",
-        "subject": b.get("subject") or "(geen onderwerp)",
-        "body": strip_quotes(inhoud).strip(),
-        "received_at": b.get("receivedDateTime"),
-        "source": {"map": MAPPEN.get(mapnaam, mapnaam)},
-    }
+    inb = ms.naar_inbound_dict(b, van, adres.get("name") or "", inhoud)
+    inb["external_ref"]["map"] = MAPPEN.get(mapnaam, mapnaam)
+    return inb
 
 
 def main() -> int:
@@ -100,33 +97,33 @@ def main() -> int:
             inb = naar_inbound(b, m)
             if not inb:
                 continue
-            if not a.alles and RUIS.search(inb["from_email"]):
+            if not a.alles and RUIS.search(inb["sender"]["email"]):
                 overgeslagen += 1
                 continue
             kandidaten.append(inb)
         print(f"  {MAPPEN.get(m, m):12s} {len(ruw):4d} berichten")
 
-    kandidaten.sort(key=lambda x: x.get("received_at") or "")
+    kandidaten.sort(key=lambda x: x.get("sent_at") or "")
     print(f"\n{len(kandidaten)} te importeren, {overgeslagen} overgeslagen als nieuwsbrief/acquisitie")
 
     if a.toon or not a.doen:
         for k in kandidaten:
-            print(f"  {(k['received_at'] or '')[:10]}  {k['from_email'][:34]:34s}  {k['subject'][:50]}")
+            print(f"  {(k['sent_at'] or '')[:10]}  {k['sender']['email'][:34]:34s}  {k['subject'][:50]}")
         print("\nDraai opnieuw met --doen om te importeren.")
         return 0
 
     nieuw = bestond = mislukt = 0
     for k in kandidaten:
-        if db.one("SELECT id FROM messages WHERE external_id = ?", (k["external_id"],)):
+        if db.one("SELECT id FROM messages WHERE external_id = ?", (k["external_message_id"],)):
             bestond += 1
             continue
         try:
             pipeline.ingest(k)
             nieuw += 1
-            print(f"  + {k['from_email'][:30]:30s} {k['subject'][:44]}")
+            print(f"  + {k['sender']['email'][:30]:30s} {k['subject'][:44]}")
         except Exception as e:  # noqa: BLE001
             mislukt += 1
-            print(f"  ! {k['from_email'][:30]:30s} {str(e)[:70]}")
+            print(f"  ! {k['sender']['email'][:30]:30s} {str(e)[:70]}")
 
     print(f"\n{nieuw} nieuw, {bestond} stond er al, {mislukt} mislukt.")
     return 0

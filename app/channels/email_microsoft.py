@@ -24,6 +24,7 @@ Wat er in `.secrets.json` onder `"microsoft"` hoort:
 
 from __future__ import annotations
 
+import re
 import time
 
 import config
@@ -36,6 +37,18 @@ except ImportError:  # zonder requests draait alles gewoon in mock-modus
 
 GRAPH = "https://graph.microsoft.com/v1.0"
 _TOKEN = {"value": None, "expires": 0.0}
+
+# Afzenders die nooit een klantvraag sturen: nieuwsbrieven, platformmeldingen en
+# koude acquisitie. Zonder dit filter loopt de inbox vol met Pinterest, TikTok en
+# SEO-aanbiedingen, en kost elke daarvan ook nog een AI-analyse. Wat hier langs
+# glipt kun je in de inbox alsnog als spam wegzetten; dat is beter dan een echte
+# klantvraag missen omdat het filter te streng staat.
+RUIS = re.compile(
+    r"(no-?reply|noreply|newsletter|notifications?@|marketing@|pinmail|pinbot|testflight|"
+    r"@microsoft\.com|@klaviyo|@yotpo|@tailwindapp|@tryatria|@triplewhale|@pinterest|"
+    r"@tiktok\.com|@trustpilot|@paypal|@billink|@shopifyemail|@godaddy|@trengo|@wonderment|"
+    r"@instant\.so|@itsperfect|@wetracked|@returnless|@gotrusted|@apple\.com|@service\.tiktok|"
+    r"@ads-service\.tiktok|@email\.tiktok)", re.I)
 
 # Hoeveel berichten we per ronde maximaal ophalen. Genoeg om een achterstand
 # weg te werken, klein genoeg om niet in een limiet te lopen.
@@ -130,6 +143,31 @@ def test() -> dict:
         return {"ok": False, "reden": str(e)[:400]}
 
 
+def naar_inbound_dict(b: dict, van_adres: str, van_naam: str, tekst: str) -> dict:
+    """Eén Graph-bericht in de vorm die `pipeline.ingest()` verwacht.
+
+    Let op de veldnamen: de pipeline wil `sender` als dict, `text`, en
+    `external_message_id` — niet `from_email`/`body`/`external_id`. Met de verkeerde
+    namen loopt de import wél door, maar komen er klanten zonder naam en zonder
+    e-mailadres in de database te staan. Precies dat gebeurde bij de eerste import
+    van 41 berichten.
+    """
+    from app.channels.email_common import strip_quotes
+    return {
+        "channel": "email", "via": "email",
+        "external_message_id": b.get("internetMessageId") or b.get("id"),
+        "external_thread_id": b.get("conversationId") or b.get("internetMessageId") or b.get("id"),
+        "sender": {"channel": "email", "external_id": van_adres,
+                   "name": van_naam or van_adres, "email": van_adres},
+        "subject": b.get("subject") or "(geen onderwerp)",
+        "text": strip_quotes(tekst).strip(),
+        "html": None,
+        "attachments": [],
+        "sent_at": b.get("receivedDateTime"),
+        "external_ref": {"in_reply_to": "", "references": "", "graph_id": b.get("id")},
+    }
+
+
 def fetch_new(sinds: str | None = None, maximaal: int = PER_RONDE) -> list[dict]:
     """Nieuwe berichten uit de postbus, als inbound-dicts voor de pipeline.
 
@@ -158,23 +196,17 @@ def fetch_new(sinds: str | None = None, maximaal: int = PER_RONDE) -> list[dict]
         van_adres, van_naam = _adres(b.get("from"))
         if van_adres == ons:
             continue                      # ons eigen verzonden bericht, geen klantvraag
+        if RUIS.search(van_adres):
+            if (b.get("receivedDateTime") or "") > (nieuwste or ""):
+                nieuwste = b["receivedDateTime"]   # wel voorbij, niet verwerken
+            continue
         inhoud = (b.get("body") or {}).get("content") or b.get("bodyPreview") or ""
         soort = ((b.get("body") or {}).get("contentType") or "text").lower()
         if soort == "html":
             from app.channels.email_common import html_to_text
             inhoud = html_to_text(inhoud)
         from app.channels.email_common import strip_quotes
-        uit.append({
-            "channel": "email",
-            "external_id": b.get("internetMessageId") or b.get("id"),
-            "thread_id": b.get("conversationId"),
-            "from_email": van_adres,
-            "from_name": van_naam,
-            "subject": b.get("subject") or "(geen onderwerp)",
-            "body": strip_quotes(inhoud).strip(),
-            "received_at": b.get("receivedDateTime"),
-            "raw_id": b.get("id"),
-        })
+        uit.append(naar_inbound_dict(b, van_adres, van_naam, inhoud))
         if (b.get("receivedDateTime") or "") > (nieuwste or ""):
             nieuwste = b["receivedDateTime"]
 
