@@ -167,8 +167,16 @@ def haal_op() -> dict:
                     c.graphql("{ publications(first:20){ edges{ node{ name } } } }")["publications"]["edges"]]
     d["themas"] = [e["node"] for e in
                    c.graphql("{ themes(first:30){ edges{ node{ name role updatedAt } } } }")["themes"]["edges"]]
-    d["paginas"] = [e["node"] for e in
-                    c.graphql("{ pages(first:40){ edges{ node{ title isPublished } } } }")["pages"]["edges"]]
+    import re as _re
+    d["paginas"] = []
+    for e in c.graphql("{ pages(first:40){ edges{ node{ title handle isPublished updatedAt body } } } }")["pages"]["edges"]:
+        n = dict(e["node"])
+        kaal = _re.sub(r"<[^>]+>", " ", n.get("body") or "")
+        kaal = _re.sub(r"&nbsp;?", " ", kaal)
+        n["kaal"] = _re.sub(r"\s+", " ", kaal).strip()
+        n["tekens"] = len(n["kaal"])
+        n.pop("body", None)
+        d["paginas"].append(n)
     d["kortingen"] = [e["node"]["codeDiscount"] for e in c.graphql(
         """{ codeDiscountNodes(first:50){ edges{ node{ codeDiscount{
              ... on DiscountCodeBasic { title status } ... on DiscountCodeBxgy { title status }
@@ -421,8 +429,113 @@ def bouw(d: dict, pad: str) -> None:
             "kans, maar het is geen prioriteit voor de heropening.", "let_op"))
     A(PageBreak())
 
-    # ---- 7 Markten en Financien -----------------------------------------
-    v_ += sectie("HOOFDSTUK 7", "Markten en Financiën", "Markten",
+
+    # ---- 6b Juridische pagina's -----------------------------------------
+    def pag(titel):
+        return next((x for x in d["paginas"] if x["title"].lower() == titel.lower()), None)
+
+    leeg = [x["title"] for x in d["paginas"] if x["tekens"] == 0 and x["isPublished"]]
+    v_ += sectie("HOOFDSTUK 7", "De verplichte pagina's", "Content",
+                 "Privacybeleid, algemene voorwaarden, retourbeleid en verzending. Wettelijk "
+                 "verplicht, en tegelijk de pagina's die bepalen hoeveel mensen jullie hoeven te mailen.")
+    rijen = []
+    for titel in ("Shipping & Returnpolicy", "Privacy Policy", "Terms & Conditions",
+                  "GDPR", "Mobile Terms of Service", "Contact us", "FAQs"):
+        x = pag(titel)
+        if not x:
+            rijen.append([titel, "—", "<font color='#b3261e'>bestaat niet</font>", "—"])
+            continue
+        staat = ("<font color='#b3261e'><b>LEEG</b></font>" if x["tekens"] == 0
+                 else f"{x['tekens']} tekens")
+        rijen.append([f"<b>{x['title']}</b>", (x["updatedAt"] or "")[:10], staat,
+                      "online" if x["isPublished"] else "<font color='#b7791f'>niet online</font>"])
+    A(tabel(["Pagina", "Bijgewerkt", "Inhoud", "Zichtbaar"], rijen, [52 * mm, 28 * mm, 45 * mm, 40 * mm]))
+    A(Spacer(1, 8))
+
+    A(kaart(f"<b>{len(leeg)} pagina's staan online maar zijn leeg.</b> Onder andere "
+            f"<b>{', '.join(leeg[:5])}</b>.<br/><br/>"
+            "Vooral <b>FAQs</b> is pijnlijk: dat is de pagina waar klanten naartoe gaan vóór ze mailen. "
+            "Staat daar niets, dan mailen ze alsnog — en elke mail kost tijd die je met een goede "
+            "FAQ-pagina had kunnen besparen. Ook <b>Track your order</b> is leeg, terwijl 'waar is mijn "
+            "pakket' de meestgestelde vraag van elke webshop is.<br/><br/>"
+            "<i>Voorbehoud:</i> een pagina kan ook inhoud krijgen via het thema in plaats van via het "
+            "tekstveld. Controleer de lege pagina's in de webshop zelf voordat je ze weggooit.", "probleem"))
+    A(PageBreak())
+
+    A(Paragraph("Wat er inhoudelijk niet klopt", st_h1))
+    A(Paragraph("Ik ben geen jurist, dus dit zijn aandachtspunten en geen juridisch advies. Het gaat "
+                "om dingen die bij een Nederlandse webwinkel gebruikelijk of verplicht zijn en hier "
+                "ontbreken of anders staan.", st_klein))
+    A(Spacer(1, 8))
+
+    A(Paragraph("Retourbeleid", st_h2))
+    A(tabel(["Wat er staat", "Oordeel"], [
+        ["14 dagen om een retour te melden, daarna 14 dagen om te versturen",
+         "<font color='#2f5d3a'><b>Goed</b></font> — dit is precies de wettelijke termijn"],
+        ["Terugbetaling binnen 14 dagen na de melding",
+         "<font color='#2f5d3a'><b>Goed</b></font>"],
+        ["Retourkosten voor de klant, tenzij het artikel kapot of verkeerd is",
+         "<font color='#2f5d3a'><b>Mag</b></font>, mits vooraf duidelijk vermeld — dat is hier het geval"],
+        ["<b>Er staat geen retouradres</b>",
+         "<font color='#b3261e'><b>Ontbreekt</b></font> — de klant moet weten waar het pakket heen moet"],
+        ["<b>Geen modelformulier voor herroeping</b>",
+         "<font color='#b3261e'><b>Ontbreekt</b></font> — een Europees standaardformulier dat je moet aanbieden"],
+        ["“There is no warranty for issues caused by washing. Any damage after washing is the "
+         "customer's responsibility.”",
+         "<font color='#b3261e'><b>Te absoluut.</b></font> In Nederland heeft een klant recht op een "
+         "deugdelijk product. Krimpt een shirt bij een normale wasbeurt volgens het eigen label, dan is "
+         "dat een gebrek — dat kun je niet op voorhand uitsluiten"],
+        ["“Holiday Notice: to ensure your order arrives before Christmas…”",
+         "<font color='#b7791f'><b>Verouderd</b></font> — gaat over vorig jaar december"],
+        ["Verzending via <b>DHL</b>, 48 uur verwerking, 3–6 werkdagen",
+         "<font color='#b7791f'><b>Controleren</b></font> — klopt dit nog met Innostock? En de tarieven "
+         "in Shopify staan op PostNL"],
+    ], [85 * mm, 80 * mm]))
+    A(Spacer(1, 8))
+
+    A(Paragraph("Algemene voorwaarden", st_h2))
+    A(Paragraph("Hierin staan de bedrijfsgegevens, en die zijn compleet:", st_p))
+    A(tabel(["Gegeven", "Wat er staat"], [
+        ["Bedrijf", "FARMERS ATELIER B.V."],
+        ["KvK-nummer", "98002899"],
+        ["Btw-nummer", "NL868320481B01"],
+        ["Adres", "Jaddanbaikade 301, 1081 LE Amsterdam"],
+        ["E-mail", "info@farmersatelier.com"],
+    ], [40 * mm, 125 * mm]))
+    A(Spacer(1, 6))
+    A(kaart("<b>Die gegevens staan alleen in de algemene voorwaarden.</b> Op de contactpagina staat een "
+            "warme tekst (“our digital door is always open”) maar <b>geen e-mailadres, geen telefoonnummer "
+            "en geen adres</b>. Een klant die contact zoekt moet dus eerst door de voorwaarden. "
+            "Zet die gegevens ook gewoon op de contactpagina — het is verplicht én het scheelt "
+            "zoekwerk.", "let_op"))
+    A(Spacer(1, 8))
+
+    A(Paragraph("Privacybeleid", st_h2))
+    A(tabel(["Wat er staat", "Oordeel"], [
+        ["Welke gegevens verzameld worden en waarvoor",
+         "<font color='#2f5d3a'><b>Aanwezig</b></font>"],
+        ["Rechten van de klant (inzage, correctie, verwijdering)",
+         "<font color='#2f5d3a'><b>Aanwezig</b></font>, met info@farmersatelier.com als contact"],
+        ["<b>Geen bewaartermijnen</b>",
+         "<font color='#b7791f'>Hoe lang bewaren jullie ordergegevens? Dat hoort erin</font>"],
+        ["<b>Verwerkers niet met naam genoemd</b>",
+         "<font color='#b7791f'>Shopify, Klaviyo, Returnless en het magazijn verwerken klantgegevens. "
+         "Die horen genoemd te worden, inclusief of er data buiten de EU gaat</font>"],
+        ["<b>Geen cookieverklaring of verwijzing ernaar</b>",
+         "<font color='#b7791f'>Er draaien wel trackers (Meta, TikTok, Pinterest, TripleWhale)</font>"],
+        ["Bedrijfsgegevens ontbreken in dit document",
+         "<font color='#b7791f'>Staan alleen in de voorwaarden</font>"],
+    ], [85 * mm, 80 * mm]))
+    A(Spacer(1, 8))
+
+    A(kaart("<b>Alles staat in het Engels.</b> Jullie klanten zijn overwegend Nederlands — de mails die "
+            "binnenkomen zijn dat ook. Voor consumenten geldt dat informatie <i>begrijpelijk</i> moet zijn, "
+            "en bij een Nederlandse B.V. met Nederlandse klanten is dat Nederlands.<br/><br/>"
+            "Praktisch is het ook: iemand die twijfelt over een retour leest geen Engelse juridische "
+            "tekst en mailt dan maar. Een Nederlandse versie naast de Engelse scheelt vragen.", "let_op"))
+    A(PageBreak())
+    # ---- 8 Markten en Financien -----------------------------------------
+    v_ += sectie("HOOFDSTUK 8", "Markten en Financiën", "Markten",
                  "Naar welke landen je verkoopt, in welke valuta, en het geldverkeer.")
     A(Paragraph("Markten", st_h2))
     A(Paragraph("Hier stel je in naar welke landen je verkoopt en tegen welke prijzen. Jullie "
@@ -440,7 +553,7 @@ def bouw(d: dict, pad: str) -> None:
     A(PageBreak())
 
     # ---- 8 Verzending ----------------------------------------------------
-    v_ += sectie("HOOFDSTUK 8", "Verzending en bezorging", "Instellingen",
+    v_ += sectie("HOOFDSTUK 9", "Verzending en bezorging", "Instellingen",
                  "Wat verzending kost per land, en vanaf welk bedrag het gratis is. "
                  "Te vinden onder Instellingen → Verzending en bezorging.")
     zones = []
@@ -471,7 +584,7 @@ def bouw(d: dict, pad: str) -> None:
     A(PageBreak())
 
     # ---- 9 Webshop en thema's -------------------------------------------
-    v_ += sectie("HOOFDSTUK 9", "Webshop en thema's", "Webshop",
+    v_ += sectie("HOOFDSTUK 10", "Webshop en thema's", "Webshop",
                  "De website zelf: de vormgeving, de indeling en welke versie live staat.")
     A(cijferrij([(f"{len(d['themas'])}", "thema's"), ("1", "live"),
                  (f"{ongebruikt}", "ongebruikt"), (f"{len(d['kanalen'])}", "verkoopkanalen")]))
@@ -505,7 +618,7 @@ def bouw(d: dict, pad: str) -> None:
     A(PageBreak())
 
     # ---- 10 Analytics ----------------------------------------------------
-    v_ += sectie("HOOFDSTUK 10", "Analytics", "Analytics",
+    v_ += sectie("HOOFDSTUK 11", "Analytics", "Analytics",
                  "Rapporten over verkoop, bezoekers, producten en retouren.")
     A(Paragraph("Wat je hier kunt", st_h2))
     A(Paragraph("Shopify heeft tientallen kant-en-klare rapporten. De nuttigste voor jullie:", st_p))
@@ -525,7 +638,7 @@ def bouw(d: dict, pad: str) -> None:
     A(PageBreak())
 
     # ---- 11 Instellingen -------------------------------------------------
-    v_ += sectie("HOOFDSTUK 11", "Instellingen", "Instellingen",
+    v_ += sectie("HOOFDSTUK 12", "Instellingen", "Instellingen",
                  "De motorkap: betalingen, checkout, belastingen, e-mail en gebruikers.")
     A(Paragraph("Wat er ingesteld staat", st_h2))
     A(tabel(["Instelling", "Bij jullie", "Oordeel"], [
@@ -555,7 +668,7 @@ def bouw(d: dict, pad: str) -> None:
     A(PageBreak())
 
     # ---- 12 Apps en koppelingen -----------------------------------------
-    v_ += sectie("HOOFDSTUK 12", "Apps en koppelingen", "Instellingen",
+    v_ += sectie("HOOFDSTUK 13", "Apps en koppelingen", "Instellingen",
                  "Externe programma's die aan de winkel vastzitten.")
     A(tabel(["App", "Wat het doet", "Opmerking"], [
         ["<b>Klaviyo</b>", "E-mail- en sms-marketing.",
