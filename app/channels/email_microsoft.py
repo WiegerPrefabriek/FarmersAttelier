@@ -183,6 +183,49 @@ def fetch_new(sinds: str | None = None, maximaal: int = PER_RONDE) -> list[dict]
     return uit
 
 
+def _zoek_bericht_id(internet_id: str) -> str | None:
+    """Van het internetMessageId naar het interne id dat Graph nodig heeft."""
+    try:
+        gevonden = _get(f"{_basis()}/messages",
+                        **{"$filter": f"internetMessageId eq '{internet_id}'",
+                           "$select": "id", "$top": "1"})
+        rijen = gevonden.get("value") or []
+        return rijen[0]["id"] if rijen else None
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def maak_concept(in_reply_to: str, body: str) -> dict:
+    """Zet een antwoord als CONCEPT in Outlook, zonder het te versturen.
+
+    Dit is de veilige tussenvorm: het concept staat bij Folkert in Outlook in de
+    map Concepten, in dezelfde draad als de vraag van de klant, met geadresseerde
+    en onderwerp al ingevuld. Hij leest het na, past aan wat hij wil en drukt zelf
+    op Verzenden. Er gaat langs deze weg nooit iets vanzelf de deur uit.
+    """
+    if not configured():
+        return {"ok": False, "reden": "Microsoft niet ingesteld"}
+    bericht_id = _zoek_bericht_id(in_reply_to)
+    if not bericht_id:
+        return {"ok": False, "reden": f"oorspronkelijk bericht niet gevonden ({in_reply_to})"}
+    try:
+        concept = _post(f"{_basis()}/messages/{bericht_id}/createReply", {})
+        concept_id = concept.get("id")
+        if not concept_id:
+            return {"ok": False, "reden": "Graph gaf geen concept terug"}
+        # De tekst er los in zetten: createReply zet alleen de geciteerde
+        # oorspronkelijke mail klaar, nog zonder ons antwoord erboven.
+        r = requests.patch(f"{GRAPH}/{_basis()}/messages/{concept_id}",
+                           json={"body": {"contentType": "Text", "content": body}},
+                           headers={"Authorization": f"Bearer {_access_token()}"}, timeout=30)
+        if r.status_code not in (200, 201):
+            return {"ok": False, "reden": f"tekst plaatsen mislukt ({r.status_code}): {r.text[:200]}"}
+        return {"ok": True, "concept_id": concept_id,
+                "web_link": (r.json() or {}).get("webLink")}
+    except Exception as e:  # noqa: BLE001
+        return {"ok": False, "reden": str(e)[:300]}
+
+
 def send(naar: str, onderwerp: str, body: str, in_reply_to: str | None = None,
          references: str | None = None, thread_id: str | None = None) -> dict:
     """Stuurt een antwoord. Beantwoordt het originele bericht als dat bekend is,
