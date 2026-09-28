@@ -256,16 +256,23 @@ class TestNepshopStand(Basis):
         db.set_setting("nepshop_modus", False)
         self.assertFalse(self.nepshop.beoordeel("return.request", "99999")["van_toepassing"])
 
-    def test_vreemd_ordernummer_krijgt_het_antwoord(self):
-        uit = self.nepshop.beoordeel("return.request", "19144")
-        self.assertTrue(uit["van_toepassing"])
+    def test_viercijferig_nummer_is_niet_van_ons(self):
+        # #1008 en #1010 kwamen in de mailbox voorbij; geen van beide staat in
+        # Shopify. Onze nummers zijn vijfcijferig (14541 t/m 19350).
+        for nr in ("#1008", "#1010"):
+            self.assertTrue(self.nepshop.beoordeel("return.request", nr)["van_toepassing"], nr)
 
-    def test_ons_eigen_nummer_krijgt_het_antwoord_niet(self):
-        # #1008 past bij onze reeks. Zonder Shopify kunnen we het niet nagaan,
-        # en dan hoort het naar een mens — niet naar het standaardantwoord.
-        uit = self.nepshop.beoordeel("return.request", "#1008")
+    def test_nummer_uit_onze_reeks_gaat_naar_een_mens(self):
+        # 19144 bestaat wél: Marvin Born, 1 februari, EUR 279,80. Zonder Shopify
+        # kunnen we dat niet nagaan, en dan is een mens aan zet — nooit het
+        # standaardantwoord, want dan sturen we een echte klant weg.
+        uit = self.nepshop.beoordeel("return.request", "19144")
         self.assertFalse(uit["van_toepassing"])
         self.assertTrue(uit["mens_nodig"])
+
+    def test_nummer_boven_ons_hoogste_is_niet_van_ons(self):
+        # Onze laatste bestelling is 19350. Alles daarboven kan niet bestaan.
+        self.assertTrue(self.nepshop.beoordeel("return.request", "22000")["van_toepassing"])
 
     def test_productvraag_valt_erbuiten(self):
         self.assertFalse(self.nepshop.beoordeel("product.question", "19144")["van_toepassing"])
