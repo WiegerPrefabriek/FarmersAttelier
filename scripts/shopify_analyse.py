@@ -699,6 +699,114 @@ def bouw(d: dict, pad: str) -> None:
             "voorraad? Eén, en de rest eruit.", "probleem"))
     A(PageBreak())
 
+
+    # ---- 14 Het klantenserviceplatform ----------------------------------
+    v_ += sectie("HOOFDSTUK 14", "Wat we zelf gebouwd hebben", "Instellingen",
+                 "Het eigen klantenserviceplatform van Farmers Atelier: één inbox waar alle "
+                 "klantvragen samenkomen, met de bestelling ernaast en een antwoord dat al klaarstaat.")
+    A(Paragraph("Waarom niet Gorgias of Zendesk", st_h2))
+    A(Paragraph("Die pakketten kosten al gauw enkele honderden euro's per maand en zitten vol functies "
+                "die jullie nooit gebruiken. Dit systeem doet alleen wat Farmers Atelier nodig heeft, "
+                "draait op de eigen laptop, en de data blijft van jullie. De techniek is bewust saai "
+                "gehouden — een Python-server, een database in één bestand, en één webpagina. Geen "
+                "frameworks die over een jaar verouderd zijn.", st_p))
+    A(Spacer(1, 6))
+    A(Paragraph("Hoe een bericht door het systeem loopt", st_h2))
+    A(tabel(["Stap", "Wat er gebeurt"], [
+        ["<b>1. Binnen</b>", "Elke 30 seconden wordt de postbus info@farmersatelier.com gelezen. "
+         "Nieuwsbrieven en koude acquisitie worden er meteen uitgefilterd."],
+        ["<b>2. Wie is dit</b>", "De klant wordt herkend op e-mailadres, en het gesprek wordt aan een "
+         "bestaande conversatie gekoppeld als die er is."],
+        ["<b>3. Bestelling erbij</b>", "Ordernummers uit de tekst worden opgezocht in Shopify: wat is "
+         "besteld, is het betaald, waar is het pakket."],
+        ["<b>4. Begrijpen</b>", "De AI bepaalt waar de vraag over gaat, hoe urgent het is, welk gevoel "
+         "erin zit, en of een mens ernaar moet kijken."],
+        ["<b>5. Regels</b>", "13 vaste regels kunnen dat oordeel overrulen. Bijvoorbeeld: een klacht met "
+         "negatief sentiment gaat altijd naar een mens."],
+        ["<b>6. Antwoord</b>", "Er wordt een concept geschreven, gecontroleerd op beloftes die we niet "
+         "kunnen waarmaken, en klaargezet — óók als echt concept in Outlook."],
+    ], [26 * mm, 139 * mm]))
+    A(Spacer(1, 8))
+    A(kaart("<b>Er wordt nooit automatisch verstuurd.</b> Het systeem kan het wel, maar dat staat uit en "
+            "blijft uit tot jullie er vertrouwen in hebben. Concepten klaarzetten is het werk; op "
+            "Verzenden drukken is mensenwerk. Datzelfde geldt voor Klaviyo: campagnes worden klaargezet, "
+            "de verstuurknop blijft van jullie.", "goed"))
+    A(PageBreak())
+
+    A(Paragraph("De onderdelen", st_h1))
+    A(tabel(["Onderdeel", "Wat het doet", "Stand"], [
+        ["<b>Inbox</b>", "Alle klantvragen op één plek, met de bestelling, eerdere gesprekken en het "
+         "conceptantwoord ernaast.", "werkt"],
+        ["<b>Voorraad-tab</b>", "Wat er ligt, wat het waard is, en wat het kost om een retour opnieuw "
+         "te verkopen.", "werkt"],
+        ["<b>Outlook-koppeling</b>", "Post ophalen en concepten terugzetten in dezelfde draad.", "werkt"],
+        ["<b>Shopify-koppeling</b>", "Klanten, bestellingen, producten, voorraad — en sinds vandaag ook "
+         "de hele website.", "werkt"],
+        ["<b>Klaviyo-koppeling</b>", "Sjablonen en campagnes klaarzetten. Bewust zonder verstuurknop.",
+         "<font color='#b7791f'>wacht op sleutel</font>"],
+        ["<b>AI-analyse</b>", "Categorie, urgentie, gevoel en conceptantwoord per bericht.",
+         "<font color='#b7791f'>wacht op sleutel</font>"],
+        ["<b>Andere webshop</b>", "Tijdelijke stand die vragen over niet-eigen bestellingen herkent en "
+         "één vast antwoord klaarzet.", "aan"],
+        ["<b>Kennisbank</b>", "12 bestanden met beleid en productinfo. Wat leeg blijft gebruikt de AI "
+         "niet — dan zegt hij liever niets dan iets verzinnen.", "half gevuld"],
+    ], [34 * mm, 105 * mm, 26 * mm]))
+    A(Spacer(1, 8))
+    A(Paragraph("Wat dit al heeft opgeleverd", st_h2))
+    A(Paragraph("Bij het koppelen van de systemen kwamen dingen aan het licht die niemand zocht. Die "
+                "staan verspreid door dit rapport, maar dit zijn de belangrijkste:", st_p))
+    A(tabel(["Ontdekt", "Waarom het uitmaakt"], [
+        ["<b>De ordernummers zijn vijfcijferig</b> (14541–19350)",
+         "Een klant die mailt over #1008 of #1010 heeft <b>niet</b> bij jullie besteld. Zonder dit "
+         "inzicht zou een echte klant met order 19144 bijna te horen hebben gekregen dat zijn "
+         "bestelling van € 279,80 niet van jullie was."],
+        ["<b>Retouren staan nergens in Shopify</b>",
+         "Ze liepen via Returnless. Daardoor is de voorraad nooit teruggeboekt en klopt de "
+         "administratie niet meer."],
+        ["<b>De mailbox begint pas 25 juli 2026</b>",
+         "Alle klantmail uit de actieve periode ontbreekt. Wie zoekt naar oude retouraanvragen vindt "
+         "niets — die zijn er simpelweg niet."],
+        ["<b>Hergebruik van een retour kost € 11,39</b>",
+         "Per stuk, volgens de Innostock-offerte. Op een shirt van € 25 is dat bijna de helft van de "
+         "opbrengst."],
+    ], [58 * mm, 107 * mm]))
+    A(PageBreak())
+
+    A(Paragraph("De retourvoorraad", st_h1))
+    A(Paragraph("Wat er in het magazijn ligt zijn <b>retouren</b> — teruggekomen bestellingen die "
+                "opnieuw verkocht gaan worden. Geen nieuwe voorraad en geen restant van een inkooporder.", st_p))
+    A(Spacer(1, 6))
+    A(tabel(["", "Aantal", "Stukprijs", "Waarde"], [
+        ["Shirts", "ca. 1.750", "€ 25,00", "€ 43.750"],
+        ["Truien", "ca. 400", "€ 50,00", "€ 20.000"],
+        ["<b>Totaal</b>", "<b>ca. 2.150</b>", "", "<b>€ 63.750</b>"],
+    ], [50 * mm, 38 * mm, 38 * mm, 39 * mm]))
+    A(Spacer(1, 8))
+    A(kaart("<b>Dit cijfer is een opgave, geen meting.</b> Ik heb geprobeerd het ergens vandaan te halen "
+            "en dat lukt niet: Shopify kent nul retouren, de voorraad daar staat negatief, en Track by "
+            "Loop blijkt een trackingpagina in plaats van een retourplatform.<br/><br/>"
+            "De handmatige Excel telt <b>1.146 shirts</b> en kent geen enkele trui — dat is 604 shirts "
+            "en alle 400 truien minder dan de opgave. Eén fysieke telling per model en maat maakt hier "
+            "een hard getal van; zolang dat er niet is blijft alles een schatting.", "let_op"))
+    A(Spacer(1, 8))
+    A(Paragraph("Wat hergebruik kost", st_h2))
+    A(Paragraph("Volgens de offerte van Innostock, per teruggekomen artikel dat opnieuw verkocht wordt. "
+                "Bij 12 weken opslag en verzending binnen Nederland:", st_p))
+    A(tabel(["Post", "Bedrag", "Wanneer je dit betaalt"], [
+        ["Retourverwerking", "€ 2,31", "bij binnenkomst, hoe dan ook"],
+        ["Inslag", "€ 0,15", "bij binnenkomst, hoe dan ook"],
+        ["Opslag (12 weken)", "€ 1,80", "loopt door zolang het blijft liggen"],
+        ["Pick &amp; pack", "€ 1,55", "pas bij verkoop"],
+        ["Verpakking", "€ 0,48", "pas bij verkoop"],
+        ["Verzendlabel PostNL", "€ 5,10", "pas bij verkoop"],
+        ["<b>Per stuk, excl. btw</b>", "<b>€ 11,39</b>", ""],
+    ], [55 * mm, 30 * mm, 80 * mm]))
+    A(Spacer(1, 6))
+    A(Paragraph("Over 2.150 stuks is dat ruim <b>€ 24.000</b> aan fulfilmentkosten om de hele partij weer "
+                "te verkopen. Van de € 63.750 verkoopwaarde blijft dan circa € 39.000 over, vóór btw en "
+                "vóór alle andere kosten. Hoe langer de partij blijft liggen, hoe verder dat zakt: bij "
+                "een jaar opslag loopt het op naar € 17,39 per stuk.", st_p))
+    A(PageBreak())
     # ---- Samenvatting ----------------------------------------------------
     A(Paragraph("Wat er moet gebeuren", st_h1))
     A(Paragraph("Op volgorde van wat het meeste kost als je het laat liggen.", st_p))
