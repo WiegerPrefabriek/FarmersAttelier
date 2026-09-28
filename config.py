@@ -32,8 +32,23 @@ AI_MODEL = os.environ.get("FA_AI_MODEL", "claude-opus-5")
 THREAD_WINDOW_DAYS = {"email": 10, "instagram": 3, "facebook": 3, "tiktok": 3, "shopify": 10}
 
 
+def testmodus() -> bool:
+    """Draait dit een test? Dan mag niets naar buiten.
+
+    Op 28-09-2026 stuurde de testsuite vijf echte e-mails vanuit
+    info@farmersatelier.com naar het verzonnen adres sophie@test.nl. De tests
+    gebruikten wel een eigen database, maar lazen gewoon de echte `.secrets.json`
+    — dus zodra Outlook gekoppeld was, verstuurde `send_reply` in een test ook
+    werkelijk post. Met deze vlag geeft `load_secrets()` niets terug en valt alles
+    terug op mock: geen mail, geen Shopify-aanroep, geen AI-kosten.
+    """
+    return os.environ.get("FA_TESTMODUS") == "1"
+
+
 def load_secrets() -> dict:
     """Leest .secrets.json; ontbreekt het bestand dan een lege dict (mock-modus)."""
+    if testmodus():
+        return {}
     try:
         with open(SECRETS_PATH, encoding="utf-8") as bestand:
             return json.load(bestand)
@@ -43,8 +58,26 @@ def load_secrets() -> dict:
         raise SystemExit(f".secrets.json is geen geldige JSON: {fout}")
 
 
+# Waarden die in .secrets.json.example staan als voorbeeld. Blijven ze staan, dan is
+# het veld in feite leeg — maar ziet elke check hem als ingevuld. Dat is precies wat
+# op 28-09-2026 misging: "sk-ant-..." bleef staan, de statuscheck zei dat Claude
+# klaarstond, en pas bij het verwerken van 41 mails bleek de sleutel ongeldig.
+PLAATSHOUDERS = ("sk-ant-...", "verzin-hier-een-lang-willekeurig-woord", "...", "xxx", "<vul in>")
+
+
+def is_plaatshouder(waarde) -> bool:
+    if not isinstance(waarde, str):
+        return False
+    schoon = waarde.strip()
+    return schoon in PLAATSHOUDERS or schoon.endswith("...") or schoon.startswith("<")
+
+
 def secret(*pad: str, default=None):
-    """secret("shopify", "admin_token") -> waarde of default. Env-vars gaan voor."""
+    """secret("shopify", "admin_token") -> waarde of default. Env-vars gaan voor.
+
+    Een onveranderde voorbeeldwaarde telt als leeg: beter geen sleutel dan een
+    sleutel waarvan je pas merkt dat hij nep is als het misgaat.
+    """
     env_naam = "FA_" + "_".join(p.upper() for p in pad)
     if os.environ.get(env_naam):
         return os.environ[env_naam]
@@ -53,7 +86,9 @@ def secret(*pad: str, default=None):
         if not isinstance(waarde, dict):
             return default
         waarde = waarde.get(stap)
-    return waarde if waarde not in (None, "") else default
+    if waarde in (None, "") or is_plaatshouder(waarde):
+        return default
+    return waarde
 
 
 def anthropic_key() -> str | None:

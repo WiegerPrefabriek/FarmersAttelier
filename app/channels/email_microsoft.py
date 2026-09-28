@@ -111,15 +111,20 @@ def _adres(veld: dict | None) -> tuple[str, str]:
 
 
 def test() -> dict:
-    """Kijkt of de koppeling werkt, zonder iets te verwerken."""
+    """Kijkt of de koppeling werkt, zonder iets te verwerken.
+
+    Vraagt bewust de mailmap op en niet het gebruikersprofiel: `GET users/{adres}`
+    valt onder User.Read.All / Directory.Read.All, en die rechten hebben we niet en
+    willen we ook niet. Mail.ReadWrite geeft toegang tot de post, niet tot de
+    adreslijst. Op het profiel testen gaf daarom een 403 terwijl de koppeling zelf
+    prima werkte.
+    """
     if not configured():
         return {"ok": False, "reden": "niet ingesteld: vul 'microsoft' in .secrets.json"}
     try:
-        p = _get(_basis(), **{"$select": "displayName,mail,userPrincipalName"})
         n = _get(f"{_basis()}/mailFolders/{_conf().get('map', 'Inbox')}",
                  **{"$select": "displayName,totalItemCount,unreadItemCount"})
-        return {"ok": True, "postbus": p.get("mail") or p.get("userPrincipalName"),
-                "naam": p.get("displayName"), "map": n.get("displayName"),
+        return {"ok": True, "postbus": afzender(), "map": n.get("displayName"),
                 "berichten": n.get("totalItemCount"), "ongelezen": n.get("unreadItemCount")}
     except Exception as e:  # noqa: BLE001 — de tekst moet leesbaar in het dashboard
         return {"ok": False, "reden": str(e)[:400]}

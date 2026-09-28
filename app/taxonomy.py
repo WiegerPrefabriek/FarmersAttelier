@@ -129,6 +129,20 @@ INTENTS = {
     "other.thanks": dict(label="Bedankje / afsluiter", group="algemeen",
         required_info=[], default_level="analyze", default_priority="low",
         description="Bedankt, oké, top — geen antwoord nodig."),
+    # --- Andere webshop onder dezelfde merknaam ---
+    # Sinds ongeveer augustus 2026 draait er een andere winkel die hetzelfde
+    # kledingmerk verkoopt onder een vergelijkbare naam. Klanten die daar besteld
+    # hebben mailen ons, omdat zij denken bij ons besteld te hebben. Wij kunnen
+    # hun bestelling niet zien, niet terugbetalen en geen retour aannemen — het is
+    # een andere partij. Eigen categorie, want het antwoord is compleet anders dan
+    # bij een echte klantvraag en het mag nooit met een gewoon retourantwoord
+    # verward worden.
+    "other_shop": dict(label="Andere webshop (niet onze bestelling)", group="andere_shop",
+        required_info=[], default_level="draft", default_priority="high",
+        description=("Klant vraagt naar een bestelling, retour of terugbetaling die niet van ons "
+                     "is, maar van een andere winkel die hetzelfde merk verkoopt. Herkenbaar aan: "
+                     "een ordernummer dat wij niet kennen, een bestelling uit een periode dat onze "
+                     "winkel dicht was, een andere website-naam, of producten die wij niet voeren.")),
     "spam": dict(label="Spam", group="algemeen",
         required_info=[], default_level="analyze", default_priority="low",
         description="Spam, phishing, auto-reply, nieuwsbrief."),
@@ -143,6 +157,7 @@ GROUPS = {
     "retouren": "Retouren",
     "productvragen": "Productvragen",
     "klachten": "Klachten",
+    "andere_shop": "Andere webshop",
     "social": "Social",
     "algemeen": "Algemeen",
 }

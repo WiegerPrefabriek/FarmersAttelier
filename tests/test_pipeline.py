@@ -10,9 +10,18 @@ import sys
 import tempfile
 import unittest
 
+# VÓÓR het importeren van config: geen enkele test mag naar buiten praten. Zonder
+# deze vlag leest config gewoon .secrets.json, en verstuurde de suite echte mail
+# vanuit de postbus van Farmers Atelier (gebeurd op 28-09-2026).
+os.environ["FA_TESTMODUS"] = "1"
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import config  # noqa: E402
+
+assert not config.load_secrets(), "testmodus staat niet aan: tests zouden echt kunnen versturen"
+assert not config.integratie_status()["microsoft"], "Outlook is bereikbaar in een test"
+
 
 _TMP = tempfile.mkdtemp()
 config.DB_PATH = os.path.join(_TMP, "test.db")
