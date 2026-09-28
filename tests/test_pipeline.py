@@ -283,5 +283,6 @@ class TestNepshopStand(Basis):
     def test_antwoord_gebruikt_de_voornaam(self):
         tekst = self.nepshop.antwoord_voor("Marvin Born")
         self.assertIn("Hoi Marvin", tekst)
-        self.assertIn("Fraudehelpdesk", tekst)
+        self.assertIn("orderbevestiging", tekst)
+        self.assertNotIn("Fraudehelpdesk", tekst)
         self.assertNotIn("{voornaam}", tekst)

@@ -29,12 +29,15 @@ zet het ticket dan door naar Wieger of Folkert.
 
 Dit hoort in het antwoord, want anders staat iemand met lege handen:
 
-1. **Contact opnemen met de winkel waar werkelijk besteld is** — het adres staat in
-   de orderbevestiging die zij hebben ontvangen.
-2. **Geld terugvragen via de bank of creditcardmaatschappij.** Bij iDEAL, creditcard
-   of PayPal loopt dat via een terugboeking of een koperbescherming.
-3. **Melding maken bij de Fraudehelpdesk** (fraudehelpdesk.nl, 088 - 786 73 72) en
-   eventueel bij ConsuWijzer van de ACM.
+**Contact opnemen met de winkel waar werkelijk besteld is.** Het adres en de
+website staan in de orderbevestiging die zij hebben ontvangen. Daar moeten ze zijn
+voor hun retour of hun geld terug.
+
+Verder verwijzen we niet: geen advies over terugboekingen bij de bank, geen
+doorverwijzing naar instanties. Wij weten niet wat er precies gebeurd is, en met
+zulk advies wekken we de indruk dat we het dossier kennen. Houd het bij wat waar
+is: dit is niet onze bestelling, en zij kunnen terecht bij de partij waar ze wél
+besteld hebben.
 
 ## Wat we niet doen
 

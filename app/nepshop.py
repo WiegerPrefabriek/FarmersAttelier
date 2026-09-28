@@ -125,22 +125,16 @@ Wat vervelend dat je hiermee zit, en dank dat je ons hebt gemaild.
 We hebben het nagekeken, maar deze bestelling kunnen we bij ons niet terugvinden.
 Dat heeft een vervelende oorzaak: er is een andere webwinkel die hetzelfde
 kledingmerk verkoopt en zich als Farmers Atelier presenteert. Klanten denken
-daardoor bij ons besteld te hebben, terwijl de bestelling en het geld bij een
-andere partij terecht zijn gekomen. Onze eigen winkel is in deze periode gesloten
-geweest.
+daardoor bij ons besteld te hebben, terwijl de bestelling bij een andere partij
+terecht is gekomen. Onze eigen winkel is in deze periode gesloten geweest.
 
-Dat betekent helaas dat wij je hier niet mee kunnen helpen: we kunnen je
-bestelling niet inzien, geen retour aannemen en het geld niet terugstorten, omdat
-het nooit bij ons is binnengekomen.
+Dat betekent helaas dat wij je hier niet verder mee kunnen helpen: we kunnen je
+bestelling niet inzien, geen retour aannemen en het bedrag niet terugstorten.
 
-Wat je wel kunt doen:
-
-1. Zoek de orderbevestiging op die je destijds hebt ontvangen. Daarin staan de
-   website en het e-mailadres van de winkel waar je werkelijk besteld hebt.
-2. Vraag je geld terug via je bank of creditcardmaatschappij. Bij iDEAL, PayPal of
-   creditcard kun je een terugboeking of koperbescherming aanvragen. Daar zitten
-   termijnen aan, dus wacht er niet te lang mee.
-3. Maak melding bij de Fraudehelpdesk via fraudehelpdesk.nl of 088 - 786 73 72.
+Wat we je wel kunnen aanraden: zoek de orderbevestiging op die je destijds hebt
+ontvangen. Daarin staan de website en het e-mailadres van de winkel waar je
+werkelijk besteld hebt. Via dat adres kun je hen rechtstreeks benaderen over je
+retour of je geld terug.
 
 Het spijt ons oprecht dat dit onder onze naam gebeurt. We vinden het net zo
 vervelend als jij.
