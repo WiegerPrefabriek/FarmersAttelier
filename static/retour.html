@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Retour aanmelden · Farmers Atelier</title>
+<style>
+  :root { --groen:#2f5d3a; --zacht:#e6efe8; --lijn:#e3e3dd; --tekst:#1d1f1b; --grijs:#6b6f66; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:#f4f4f1; color:var(--tekst); line-height:1.5;
+         font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif; }
+  .bak { max-width:640px; margin:0 auto; padding:24px 18px 60px; }
+  header { text-align:center; padding:28px 0 20px; }
+  .merk { font-weight:800; letter-spacing:.5px; font-size:15px; color:var(--groen); }
+  h1 { font-size:24px; margin:16px 0 6px; }
+  .sub { color:var(--grijs); font-size:14px; margin:0; }
+  .kaart { background:#fff; border:1px solid var(--lijn); border-radius:12px; padding:18px; margin-bottom:14px; }
+  .order { display:flex; justify-content:space-between; font-size:13px; color:var(--grijs);
+           border-bottom:1px solid var(--lijn); padding-bottom:12px; margin-bottom:4px; }
+  .regel { display:flex; gap:12px; align-items:flex-start; padding:14px 0; border-bottom:1px solid var(--lijn); }
+  .regel:last-child { border-bottom:none; }
+  .regel .info { flex:1; min-width:0; }
+  .titel { font-weight:600; }
+  .maat { color:var(--grijs); font-size:13px; }
+  select, textarea, input { font:inherit; color:inherit; border:1px solid #cfcfc7; border-radius:8px;
+                            padding:8px 10px; background:#fff; width:100%; }
+  textarea { resize:vertical; min-height:80px; }
+  .aantal { width:74px; flex:none; }
+  label.veld { display:block; font-size:13px; font-weight:600; margin:14px 0 5px; }
+  button { font:inherit; font-weight:600; border:none; border-radius:9px; padding:13px 20px;
+           background:var(--groen); color:#fff; cursor:pointer; width:100%; font-size:15px; }
+  button:disabled { opacity:.45; cursor:default; }
+  .melding { padding:12px 14px; border-radius:9px; font-size:14px; margin-bottom:14px; }
+  .melding.fout { background:#fbe5e3; color:#b3261e; }
+  .melding.goed { background:var(--zacht); color:var(--groen); }
+  .klein { font-size:12.5px; color:var(--grijs); }
+  .stappen { display:flex; gap:8px; margin:18px 0 22px; }
+  .stap { flex:1; height:4px; border-radius:2px; background:var(--lijn); }
+  .stap.aan { background:var(--groen); }
+  .verborgen { display:none; }
+  .klaar { text-align:center; padding:30px 10px; }
+  .vink { width:52px; height:52px; border-radius:50%; background:var(--zacht); color:var(--groen);
+          display:flex; align-items:center; justify-content:center; font-size:26px; margin:0 auto 16px; }
+</style>
+</head>
+<body>
+<div class="bak">
+  <header>
+    <div class="merk">FARMERS ATELIER</div>
+    <h1 id="kop">Retour aanmelden</h1>
+    <p class="sub" id="subkop">Even kijken welke bestelling dit is…</p>
+  </header>
+
+  <div id="melding"></div>
+
+  <div id="formulier" class="verborgen">
+    <div class="stappen"><div class="stap aan"></div><div class="stap" id="stap2"></div></div>
+
+    <div class="kaart">
+      <div class="order">
+        <span>Bestelling <b id="ordernaam"></b></span>
+        <span id="klantmail"></span>
+      </div>
+      <p class="klein" style="margin:10px 0 0">Vink aan wat je wilt terugsturen. Je hoeft niet
+        alles terug te sturen — een deel mag ook.</p>
+      <div id="regels"></div>
+    </div>
+
+    <div class="kaart">
+      <label class="veld" for="reden">Wat is de belangrijkste reden?</label>
+      <select id="reden"></select>
+
+      <label class="veld" for="toelichting">Wil je er iets bij vertellen? (niet verplicht)</label>
+      <textarea id="toelichting" placeholder="Bijvoorbeeld: de maat viel kleiner uit dan verwacht."></textarea>
+      <p class="klein" style="margin-top:8px">Hoe meer je ons vertelt, hoe beter we het de volgende
+        keer kunnen doen.</p>
+    </div>
+
+    <button id="verstuur" disabled>Retour aanmelden</button>
+    <p class="klein" style="text-align:center;margin-top:12px">Je hoeft nog niets te versturen.
+      Na je aanmelding krijg je van ons bericht met de retourinstructies.</p>
+  </div>
+
+  <div id="klaar" class="verborgen">
+    <div class="kaart klaar">
+      <div class="vink">✓</div>
+      <h2 style="margin:0 0 8px;font-size:19px">Je retour is aangemeld</h2>
+      <p class="sub" id="klaartekst"></p>
+      <p class="klein" style="margin-top:18px">We sturen je binnen één werkdag een mail met de
+        retourinstructies en het adres waar het pakket heen moet. Stuur nog niets op voordat je
+        die mail hebt.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+// De hele pagina draait op het token uit het adres. Geen inlog, geen zoekformulier:
+// alleen wie de link van ons heeft gekregen komt hier binnen.
+const token = location.pathname.split("/").filter(Boolean).pop();
+const $ = (s) => document.querySelector(s);
+const esc = (t) => String(t ?? "").replace(/[&<>"']/g, (c) =>
+  ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+let retour = null;
+
+function melding(tekst, soort) {
+  $("#melding").innerHTML = `<div class="melding ${soort}">${esc(tekst)}</div>`;
+}
+
+async function start() {
+  try {
+    const r = await fetch(`/api/portaal/${token}`);
+    if (!r.ok) throw new Error((await r.json()).error || "onbekend");
+    retour = await r.json();
+  } catch (e) {
+    $("#subkop").textContent = "";
+    melding("Deze link werkt niet meer. Heb je hem per mail gekregen? Stuur ons dan even een "
+          + "bericht, dan sturen we een nieuwe.", "fout");
+    return;
+  }
+  if (retour.verlopen) {
+    $("#subkop").textContent = "";
+    melding("Deze link is verlopen. Mail ons even, dan sturen we een nieuwe.", "fout");
+    return;
+  }
+  if (retour.status !== "uitgenodigd") {
+    $("#subkop").textContent = "";
+    klaarScherm("Deze retour is al bij ons aangemeld.");
+    return;
+  }
+  toon();
+}
+
+function toon() {
+  $("#subkop").textContent = "Kies wat je wilt terugsturen.";
+  $("#ordernaam").textContent = retour.order_naam;
+  $("#klantmail").textContent = retour.email_gemaskeerd || "";
+  $("#regels").innerHTML = retour.regels.map((r, i) => `
+    <div class="regel">
+      <div class="info">
+        <div class="titel">${esc(r.titel)}</div>
+        <div class="maat">${esc(r.maat || "")}${r.prijs ? " · € " + Number(r.prijs).toFixed(2).replace(".", ",") : ""}</div>
+      </div>
+      <select class="aantal" data-i="${i}">
+        ${Array.from({ length: r.aantal + 1 }, (_, n) =>
+          `<option value="${n}">${n}</option>`).join("")}
+      </select>
+    </div>`).join("");
+
+  const redenen = {"te_klein": "Te klein", "te_groot": "Te groot", "niet_mooi": "Ziet er anders uit dan verwacht", "kwaliteit": "Kwaliteit valt tegen", "beschadigd": "Beschadigd aangekomen", "verkeerd": "Verkeerd artikel ontvangen", "te_laat": "Te laat bezorgd", "anders": "Anders"};
+  $("#reden").innerHTML = Object.entries(redenen)
+    .map(([k, v]) => `<option value="${k}">${esc(v)}</option>`).join("");
+
+  document.querySelectorAll(".aantal").forEach((s) => s.onchange = bijwerken);
+  $("#formulier").classList.remove("verborgen");
+  $("#verstuur").onclick = aanmelden;
+}
+
+function gekozen() {
+  return Array.from(document.querySelectorAll(".aantal"))
+    .map((s) => ({ id: retour.regels[+s.dataset.i].id, aantal: +s.value }))
+    .filter((x) => x.aantal > 0);
+}
+
+function bijwerken() {
+  const n = gekozen().reduce((t, x) => t + x.aantal, 0);
+  $("#verstuur").disabled = n === 0;
+  $("#verstuur").textContent = n === 0 ? "Retour aanmelden"
+    : `${n} ${n === 1 ? "artikel" : "artikelen"} aanmelden`;
+  $("#stap2").classList.toggle("aan", n > 0);
+}
+
+async function aanmelden() {
+  $("#verstuur").disabled = true;
+  $("#verstuur").textContent = "Bezig…";
+  const reden = $("#reden").value;
+  try {
+    const r = await fetch(`/api/portaal/${token}`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        regels: gekozen().map((x) => ({ ...x, reden })),
+        reden, toelichting: $("#toelichting").value,
+      }),
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || "aanmelden mislukt");
+    klaarScherm(`${d.aantal} ${d.aantal === 1 ? "artikel" : "artikelen"} uit bestelling ${d.order}.`);
+  } catch (e) {
+    melding("Er ging iets mis: " + e.message + ". Probeer het zo nog eens, of mail ons.", "fout");
+    $("#verstuur").disabled = false;
+    bijwerken();
+  }
+}
+
+function klaarScherm(tekst) {
+  $("#formulier").classList.add("verborgen");
+  $("#kop").textContent = "Bedankt";
+  $("#subkop").textContent = "";
+  $("#klaartekst").textContent = tekst;
+  $("#klaar").classList.remove("verborgen");
+}
+
+start();
+</script>
+</body>
+</html>

@@ -62,6 +62,16 @@ ROUTES = [
     ("GET", r"^/api/integrations$", api.integrations_status),
     ("GET", r"^/api/integrations/test$", api.integrations_test),
     ("POST", r"^/api/fulfillment/event$", api.fulfillment_event),
+    ("GET", r"^/api/campagnes$", api.campagnes_lijst),
+    ("POST", r"^/api/campagnes$", api.campagne_bewaar),
+    ("GET", r"^/api/campagnes/(?P<id>\d+)$", api.campagne_een),
+    ("POST", r"^/api/campagnes/(?P<id>\d+)$", api.campagne_bewaar),
+    ("DELETE", r"^/api/campagnes/(?P<id>\d+)$", api.campagne_verwijder),
+    ("GET", r"^/api/retouren$", api.retouren_overzicht),
+    ("POST", r"^/api/retouren/uitnodigen$", api.retour_uitnodigen),
+    ("POST", r"^/api/retouren/(?P<id>\d+)/status$", api.retour_markeren),
+    ("GET", r"^/api/portaal/(?P<token>[A-Za-z0-9_-]{16,64})$", api.portaal_ophalen),
+    ("POST", r"^/api/portaal/(?P<token>[A-Za-z0-9_-]{16,64})$", api.portaal_aanmelden),
     ("GET", r"^/api/voorraad$", api.voorraad),
     ("GET", r"^/api/voorraad/kosten$", api.voorraad_kosten),
 ]
@@ -131,6 +141,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if pad.startswith("/api/"):
             return self._api(method, pad, params)
         if method == "GET":
+            # Het retourportaal: elke /retour/<token> toont dezelfde pagina; het
+            # token wordt door de pagina zelf uit het adres gelezen.
+            if pad.startswith("/retour/"):
+                return self._static("/retour.html")
             return self._static(pad)
         self._send(404, b"Not found", "text/plain")
 

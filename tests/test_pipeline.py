@@ -286,3 +286,90 @@ class TestNepshopStand(Basis):
         self.assertIn("orderbevestiging", tekst)
         self.assertNotIn("Fraudehelpdesk", tekst)
         self.assertNotIn("{voornaam}", tekst)
+
+
+class TestRetourportaal(Basis):
+    """Het portaal waar klanten hun retour aanmelden.
+
+    De gevoeligste plek van het hele systeem: hier kijkt een buitenstaander zonder
+    inlog naar ordergegevens. Deze tests bewaken dat hij alleen zijn eigen
+    bestelling ziet.
+    """
+
+    def setUp(self):
+        from app import retourportaal
+        self.rp = retourportaal
+        db.execute("DELETE FROM retouren")
+
+    def _maak(self, order="19144", email="klant@test.nl"):
+        token = "tok" + "x" * 24
+        db.insert("retouren", {
+            "token": token, "order_naam": order, "klant_email": email,
+            "klant_naam": "Test Klant", "status": "uitgenodigd",
+            "regels": db.dumps([
+                {"id": "gid://r/1", "titel": "Tee", "maat": "L", "aantal": 2, "retour_aantal": 0},
+                {"id": "gid://r/2", "titel": "Hoodie", "maat": "M", "aantal": 1, "retour_aantal": 0}])})
+        return token
+
+    def test_onbekend_token_geeft_niets(self):
+        self.assertIsNone(self.rp.haal_op("bestaatnietxxxxxxxxxxxxx"))
+
+    def test_emailadres_gaat_niet_mee_naar_de_klant(self):
+        d = self.rp.haal_op(self._maak(email="prive@voorbeeld.nl"))
+        self.assertNotIn("klant_email", d)
+        self.assertNotIn("order_gid", d)
+        self.assertIn("•••", d["email_gemaskeerd"])
+
+    def test_aanmelden_werkt_en_telt(self):
+        t = self._maak()
+        d = self.rp.haal_op(t)
+        uit = self.rp.meld_aan(t, [{"id": d["regels"][0]["id"], "aantal": 2, "reden": "te_klein"}])
+        self.assertTrue(uit["ok"])
+        self.assertEqual(uit["aantal"], 2)
+
+    def test_niet_meer_terugsturen_dan_besteld(self):
+        t = self._maak()
+        d = self.rp.haal_op(t)
+        # De klant vraagt er 99 terug terwijl er 2 besteld zijn.
+        uit = self.rp.meld_aan(t, [{"id": d["regels"][0]["id"], "aantal": 99}])
+        self.assertEqual(uit["aantal"], 2)
+
+    def test_tweede_keer_aanmelden_kan_niet(self):
+        t = self._maak()
+        d = self.rp.haal_op(t)
+        self.rp.meld_aan(t, [{"id": d["regels"][0]["id"], "aantal": 1}])
+        tweede = self.rp.meld_aan(t, [{"id": d["regels"][0]["id"], "aantal": 1}])
+        self.assertFalse(tweede["ok"])
+
+    def test_niets_aanvinken_geeft_een_melding(self):
+        t = self._maak()
+        d = self.rp.haal_op(t)
+        uit = self.rp.meld_aan(t, [{"id": d["regels"][0]["id"], "aantal": 0}])
+        self.assertFalse(uit["ok"])
+
+
+class TestCampagnes(Basis):
+    """Campagnes worden klaargezet, nooit verstuurd."""
+
+    def setUp(self):
+        from app import campagnes
+        self.camp = campagnes
+
+    def test_er_bestaat_geen_verstuurfunctie(self):
+        # Als iemand ooit een verstuur() toevoegt, valt deze test om. Dat is de
+        # bedoeling: versturen hoort mensenwerk te blijven.
+        verboden = [n for n in dir(self.camp)
+                    if n.lower() in ("verstuur", "send", "versturen", "send_campaign")]
+        self.assertEqual(verboden, [])
+
+    def test_alleen_mensen_met_toestemming(self):
+        self.assertEqual(self.camp.TOEGESTAAN, {"SUBSCRIBED"})
+
+    def test_controle_eist_een_afmeldlink(self):
+        c = self.camp.controleer("Wij zijn weer open", "Hallo van Farmers Atelier!", "alle_abonnees")
+        self.assertFalse(c["ok"])
+        self.assertTrue(any("afmeld" in p["tekst"].lower() for p in c["punten"]))
+
+    def test_controle_klaagt_over_leeg_onderwerp(self):
+        c = self.camp.controleer("", "Farmers Atelier {{afmeldlink}}", "alle_abonnees")
+        self.assertFalse(c["ok"])

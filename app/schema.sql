@@ -326,3 +326,39 @@ CREATE TABLE IF NOT EXISTS fulfillment_events (
   raw         TEXT NOT NULL DEFAULT '{}'
 );
 CREATE INDEX IF NOT EXISTS idx_fulfil_order ON fulfillment_events(order_name, occurred_at);
+
+-- E-mailcampagnes. Alleen concepten: dit systeem verstuurt nooit zelf.
+CREATE TABLE IF NOT EXISTS campagnes (
+  id          INTEGER PRIMARY KEY,
+  naam        TEXT NOT NULL,
+  onderwerp   TEXT NOT NULL DEFAULT '',
+  tekst       TEXT NOT NULL DEFAULT '',
+  doelgroep   TEXT NOT NULL DEFAULT 'alle_abonnees',
+  status      TEXT NOT NULL DEFAULT 'concept',   -- concept | klaargezet
+  ontvangers  INTEGER NOT NULL DEFAULT 0,
+  controle    TEXT NOT NULL DEFAULT '[]',
+  created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  updated_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+
+-- Retouraanmeldingen uit het klantportaal.
+CREATE TABLE IF NOT EXISTS retouren (
+  id            INTEGER PRIMARY KEY,
+  token         TEXT NOT NULL UNIQUE,     -- zit in de link die de klant krijgt
+  order_naam    TEXT NOT NULL,
+  order_gid     TEXT,
+  klant_email   TEXT NOT NULL,
+  klant_naam    TEXT,
+  status        TEXT NOT NULL DEFAULT 'uitgenodigd',
+                -- uitgenodigd | aangemeld | ontvangen | afgehandeld | afgewezen
+  regels        TEXT NOT NULL DEFAULT '[]',   -- wat de klant terugstuurt
+  reden         TEXT,
+  toelichting   TEXT,
+  conversation_id INTEGER,
+  aangemeld_op  TEXT,
+  ontvangen_op  TEXT,
+  afgehandeld_op TEXT,
+  created_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+CREATE INDEX IF NOT EXISTS idx_retouren_token ON retouren(token);
+CREATE INDEX IF NOT EXISTS idx_retouren_order ON retouren(order_naam);

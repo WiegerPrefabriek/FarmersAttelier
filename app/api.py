@@ -8,7 +8,7 @@ import os
 import re
 
 import config
-from app import db, knowledge, pipeline, service, stats, voorraad as voorraad_mod
+from app import campagnes as camp, db, knowledge, pipeline, retourportaal, service, stats, voorraad as voorraad_mod
 from app.ai import agent as ai
 from app.integrations import fulfillment, shopify
 from app.channels import email_microsoft
@@ -438,3 +438,62 @@ def integrations_test(params, body, user_id):
     uit["anthropic"] = {"ok": bool(config.anthropic_key()),
                         "modus": ai.agent_mode()}
     return {"koppelingen": uit}
+
+
+# --- Campagnes: opstellen en klaarzetten. Nooit versturen. ------------------
+def campagnes_lijst(params, body, user_id):
+    return {"campagnes": camp.lijst(), "doelgroepen": camp.doelgroepen()}
+
+
+def campagne_een(params, body, user_id):
+    c = camp.een(_int(params["id"]))
+    if not c:
+        raise ApiError(404, "campagne niet gevonden")
+    return c
+
+
+def campagne_bewaar(params, body, user_id):
+    return camp.bewaar(
+        naam=(body.get("naam") or "Naamloze campagne").strip(),
+        onderwerp=(body.get("onderwerp") or "").strip(),
+        tekst=body.get("tekst") or "",
+        doelgroep=body.get("doelgroep") or "alle_abonnees",
+        campagne_id=_int(params["id"]) if params.get("id") else None)
+
+
+def campagne_verwijder(params, body, user_id):
+    camp.verwijder(_int(params["id"]))
+    return {"ok": True}
+
+
+# --- Retourportaal ----------------------------------------------------------
+def retouren_overzicht(params, body, user_id):
+    return retourportaal.overzicht()
+
+
+def retour_uitnodigen(params, body, user_id):
+    return retourportaal.nodig_uit(
+        order_naam=(body.get("order") or "").strip(),
+        klant_email=(body.get("email") or "").strip(),
+        klant_naam=body.get("naam"),
+        conversation_id=body.get("conversation_id"))
+
+
+def retour_markeren(params, body, user_id):
+    return retourportaal.markeer(_int(params["id"]), (body.get("status") or "").strip())
+
+
+# --- Wat de KLANT ziet (geen inlog, alleen met token) -----------------------
+def portaal_ophalen(params, body, user_id):
+    r = retourportaal.haal_op(params["token"])
+    if not r:
+        raise ApiError(404, "Deze link werkt niet (meer).")
+    return r
+
+
+def portaal_aanmelden(params, body, user_id):
+    uit = retourportaal.meld_aan(params["token"], body.get("regels") or [],
+                                 reden=body.get("reden"), toelichting=body.get("toelichting"))
+    if not uit.get("ok"):
+        raise ApiError(400, uit.get("reden") or "Aanmelden mislukt")
+    return uit
